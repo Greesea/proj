@@ -5,7 +5,7 @@
 // @namespace   pd2statsSkillTreeLocalization_chinese
 // @include     http://pd2stats.com/stats.php?*
 // @require     http://code.jquery.com/jquery-1.11.1.js
-// @version     b0.21
+// @version     b0.3
 // @author      Greesea,Lie1092
 // ==/UserScript==
 var count = 0;
@@ -112,43 +112,43 @@ function skillTree(html) {
         //技师
         case 3:
             //主技能
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Unlocking the Technician</div><br><strong class=\"blue\">Unlock for</strong> 1 Skillpoint<br>The Technician is an expert in the practical application of criminal science, enjoying anything that goes BOOM!<br><br>Spending the first point in the Technician skill tree unlocks the ability to place the trip mine deployable. The trip mine can be used to blow things up, like people and safes.<br><br><div class=\"bluein\">2</div> deployable trip mines are added to your inventory.</span>", "<span><div class=\"blueh2\">解锁技师技能</div><br><strong class=\"blue\">成为技师需</strong> 1 技能点<br>技师是一个炸弹狂人。<br><br>解锁即可部署地雷。<br><br>可携带 <div class=\"bluein\">2</div> 个地雷。</span>");
             //Rifleman
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Rifleman</div><br><strong class=\"blue\">Basic</strong> 1 Skillpoint<br>Your snap to zoom <div class=\"bluein\">100%</div> faster with assault rifles and sniper rifles.<br><strong class=\"blue\">Ace</strong> 3 Skillpoints<br>Your weapon zoom level is increased by <div class=\"bluein\">25%</div> with assault rifles and sniper rifles.</span>", "<span><div class=\"blueh2\">步枪手</div><br><strong class=\"blue\">入门级</strong> 1 技能点<br>增加 <div class=\"bluein\">100%</div> 步枪和狙击枪进入瞄具速度。<br><strong class=\"blue\">专家级</strong> 3 技能点<br>增加 <div class=\"bluein\">25%</div> 步枪和狙击枪缩放倍率。</span>");
             //Demolition Man
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Demolition Man</div><br><strong class=\"blue\">Basic</strong> 1 Skillpoint<br>Adds <div class=\"bluein\">1</div> more trip mine to your inventory.<br><strong class=\"blue\">Ace</strong> 3 Skillpoints<br>Decreases your trip mine deploy time by <div class=\"bluein\">20%</div>.</span>", "<span><div class=\"blueh2\">拆迁办</div><br><strong class=\"blue\">入门级</strong> 1 技能点<br>增加 <div class=\"bluein\">1</div> 个地雷携带量。<br><strong class=\"blue\">专家级</strong> 3 技能点<br>缩短 <div class=\"bluein\">20%</div> 地雷放置时间。</span>");
             //Nerves of Steel
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Nerves of Steel</div><br><strong class=\"blue\">Basic</strong> 1 Skillpoint<br>You take <div class=\"bluein\">50%</div> less damage while interacting with things.<br><strong class=\"blue\">Ace</strong> 3 Skillpoints<br>You can now use steel sight while in bleed-out.</span>", "<span><div class=\"blueh2\">钢铁意志</div><br><strong class=\"blue\">入门级</strong> 1 技能点<br>互动时减少 <div class=\"bluein\">50%</div> 所受伤害。<br><strong class=\"blue\">专家级</strong> 3 技能点<br>你能在倒地的时候使用瞄具。</span>");
             //Sharpshooter
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Sharpshooter</div><br><strong class=\"blue\">Basic</strong> 1 Skillpoint<br>You are <div class=\"bluein\">20%</div> more accurate with all single shot weapons.<br><strong class=\"blue\">Ace</strong> 3 Skillpoints<br>Your weapon stability is increased with all rifles by <div class=\"bluein\">25%</div>.</span>", "<span><div class=\"blueh2\">神射手</div><br><strong class=\"blue\">入门级</strong> 1 技能点<br>单发武器增加 <div class=\"bluein\">20%</div> 精准度。<br><strong class=\"blue\">专家级</strong> 3 技能点<br>增加所有步枪 <div class=\"bluein\">25%</div> 稳定性。</span>");
             //Combat Engineer
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Combat Engineer</div><br><strong class=\"blue\">Basic</strong> 1 Skillpoint<br>Allows you to turn trip mines on or off.<br><strong class=\"blue\">Ace</strong> 3 Skillpoints<br>Upgrades your trip mines with a sensor mode. Enemies that go past your trip mines while in sensor mode are highlighted for you and your crew.<br><br>If stealth is not an option, the trip mines will highlight special enemies for you and your crew.</span>", "<span><div class=\"blueh2\">战地工程师</div><br><strong class=\"blue\">入门级</strong> 1 技能点<br>允许开关地雷。<br><strong class=\"blue\">专家级</strong> 3 技能点<br>地雷可以标记走过地雷的敌人。<br><br>非潜行时，地雷会标记出特殊敌人。</span>");
             //Hardware Expert
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Hardware Expert</div><br><strong class=\"blue\">Basic</strong> 1 Skillpoint<br>You fix the drill <div class=\"bluein\">25%</div> faster and you also deploy trip mines <div class=\"bluein\">20%</div> faster.<br><strong class=\"blue\">Ace</strong> 3 Skillpoints<br>Gives drill a <div class=\"bluein\">30%</div> chance to autorestart when it breaks down. You also deploy the sentry gun <div class=\"bluein\">50%</div> faster.</span>", "<span><div class=\"blueh2\">设备专家</div><br><strong class=\"blue\">入门级</strong> 1 技能点<br>增加 <div class=\"bluein\">25%</div> 钻机维修速度和地雷放置速度。<br><strong class=\"blue\">专家级</strong> 3 技能点<br>钻机损坏后有 <div class=\"bluein\">30%</div> 几率自动修复，提升 <div class=\"bluein\">50%</div> 守卫机枪放置速度。</span>");
             //Sentry Gun
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Sentry Gun</div><br><strong class=\"blue\">Basic</strong> 1 Skillpoint<br>Unlocks the sentry gun for you to use.<br><strong class=\"blue\">Ace</strong> 3 Skillpoints<br>Your sentry gun gains <div class=\"bluein\">150%</div> more health.</span>", "<span><div class=\"blueh2\">守卫机枪</div><br><strong class=\"blue\">入门级</strong> 1 技能点<br>解锁 <div class=\"bluein\">守卫机枪</div> 。<br><strong class=\"blue\">专家级</strong> 3 技能点<br>增加 <div class=\"bluein\">150%</div> 守卫机枪耐久。</span>");
             //Tactical Mines
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Tactical Mines</div><br><strong class=\"blue\">Basic</strong> 1 Skillpoint<br>The radius of trip mine explosions is increased by <div class=\"bluein\">30%</div>.<br><strong class=\"blue\">Ace</strong> 3 Skillpoints<br>Special enemies marked by your trip mines take <div class=\"bluein\">15%</div> more damage.</span>", "<span><div class=\"blueh2\">战术地雷</div><br><strong class=\"blue\">入门级</strong> 1 技能点<br>增加 <div class=\"bluein\">30%</div> 地雷爆炸范围。<br><strong class=\"blue\">专家级</strong> 3 技能点<br>地雷标记的特殊敌人会受到额外 <div class=\"bluein\">15%</div> 的伤害。</span>");
             //Drill Sergeant
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Drill Sergeant</div><br><strong class=\"blue\">Basic</strong> 1 Skillpoint<br>Increases your drill speed by <div class=\"bluein\">15%</div>.<br><strong class=\"blue\">Ace</strong> 3 Skillpoints<br>Further increases your drill speed by <div class=\"bluein\">15%</div>.</span>", "<span><div class=\"blueh2\">钻机强化</div><br><strong class=\"blue\">入门级</strong> 1 技能点<br>增加 <div class=\"bluein\">15%</div> 钻机效率。<br><strong class=\"blue\">专家级</strong> 3 技能点<br>额外增加 <div class=\"bluein\">15%</div> 钻机效率。</span>");
             //Sentry Targeting Package
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Sentry Targeting Package</div><br><strong class=\"blue\">Basic</strong> 4 Skillpoints<br>Your sentry gun accuracy is improved by <div class=\"bluein\">100%</div>.<br><strong class=\"blue\">Ace</strong> 8 Skillpoints<br>Your sentry gun rotational speed is increased by <div class=\"bluein\">150%</div>. Your sentry gun is loaded with <div class=\"bluein\">50%</div> extra ammo.</span>", "<span><div class=\"blueh2\">守卫机枪瞄准装置</div><br><strong class=\"blue\">入门级</strong> 4 技能点<br>增加 <div class=\"bluein\">100%</div> 守卫机枪精准度。<br><strong class=\"blue\">专家级</strong> 8 技能点<br>增加 <div class=\"bluein\">150%</div> 守卫机枪转向速度， <div class=\"bluein\">50%</div> 额外弹药。</span>");
             //Jack of all Trades
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Jack of all Trades</div><br><strong class=\"blue\">Basic</strong> 4 Skillpoints<br>The radius of trip mine explosions is increased by <div class=\"bluein\">70%</div>.<br><strong class=\"blue\">Ace</strong> 8 Skillpoints<br>You can now carry sentry guns and trip mines at the same time. When you deplete your trip mines or sentry guns you will switch to the other one.<br><br>Note: You need a sentry gun for this skill to work.</span>", "<span><div class=\"blueh2\">万金油</div><br><strong class=\"blue\">入门级</strong> 4 技能点<br>增加 <div class=\"bluein\">70%</div> 地雷爆炸范围。<br><strong class=\"blue\">专家级</strong> 8 技能点<br>你现在可以同时携带守卫机枪和地雷，当其中一个用完会自动切换到另一个。<br><br>注意：你需要守卫机枪技能来让专家级效果生效</span>");
             //Silent Drilling
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Silent Drilling</div><br><strong class=\"blue\">Basic</strong> 4 Skillpoints<br>Your drill makes <div class=\"bluein\">65%</div> less noise. Civilians and guards are less likely to hear your drill and sound the alarm.<br><strong class=\"blue\">Ace</strong> 8 Skillpoints<br>Your drill is silent. Civilians and guards have to see the drill in order to sound the alarm.</span>", "<span><div class=\"blueh2\">静音钻机</div><br><strong class=\"blue\">入门级</strong> 4 技能点<br>减少 <div class=\"bluein\">65%</div> 钻机噪音。<br><strong class=\"blue\">专家级</strong> 8 技能点<br>钻机现在完全不会发出噪音。</span>");
             //Sentry Combat Upgrade
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Sentry Combat Upgrade</div><br><strong class=\"blue\">Basic</strong> 4 Skillpoints<br>You can now reload your sentry gun with your own ammo.<br><strong class=\"blue\">Ace</strong> 8 Skillpoints<br>Your sentry gun receives a protective shield.</span>", "<span><div class=\"blueh2\">守卫机枪强化</div><br><strong class=\"blue\">入门级</strong> 4 技能点<br>你现在可以用携带的子弹装填机枪。<br><strong class=\"blue\">专家级</strong> 8 技能点<br>你的守卫机枪现在拥有保护装甲。</span>");
             //Shaped Charge
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Shaped Charge</div><br><strong class=\"blue\">Basic</strong> 4 Skillpoints<br>Adds <div class=\"bluein\">3</div> more trip mines to your inventory.<br><strong class=\"blue\">Ace</strong> 8 Skillpoints<br>Trip mines can now be converted to shaped charges, used to breach certain safes and doors.</span>", "<span><div class=\"blueh2\">C4</div><br><strong class=\"blue\">入门级</strong> 4 技能点<br>增加 <div class=\"bluein\">3</div> 个地雷携带量。<br><strong class=\"blue\">专家级</strong> 8 技能点<br>地雷现在能用来爆破门和保险柜。</span>");
             //Shockproof
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Shockproof</div><br><strong class=\"blue\">Basic</strong> 4 Skillpoints<br>Taser shock attacks on you backfire, knocking back the Taser.<br><strong class=\"blue\">Ace</strong> 8 Skillpoints<br>Interacting with an enemy Taser while he is electrocuting you will electrocute him, dealing <div class=\"bluein\">50%</div> damage to his health.</span>", "<span><div class=\"blueh2\">电击抗性</div><br><strong class=\"blue\">入门级</strong> 4 技能点<br>当电击枪手电你后背时有小机率反电给电击枪手。<br><strong class=\"blue\">专家级</strong> 8 技能点<br>当被电的时候和电击枪手互动会将电击反弹回去并对他造成 <div class=\"bluein\">50%</div> 的伤害。</span>");
             //Sentry Tower Defence
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Sentry Tower Defense</div><br><strong class=\"blue\">Basic</strong> 4 Skillpoints<br>You can now place <div class=\"bluein\">2</div> sentry guns instead of just one.<br><strong class=\"blue\">Ace</strong> 8 Skillpoints<br>Your sentry gun damage is increased by <div class=\"bluein\">300%</div>.</span>", "<span><div class=\"blueh2\">哨兵防御阵列</div><br><strong class=\"blue\">入门级</strong> 4 技能点<br>你可以同时携带 <div class=\"bluein\">2</div> 个守卫机枪。<br><strong class=\"blue\">专家级</strong> 8 技能点<br>增加 <div class=\"bluein\">300%</div> 的守卫机枪伤害。</span>");
             //Mag Plus
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Mag Plus</div><br><strong class=\"blue\">Basic</strong> 4 Skillpoints<br>Your weapon magazine capacity is increased by <div class=\"bluein\">5</div> rounds.<br><strong class=\"blue\">Ace</strong> 8 Skillpoints<br>Further increases your weapon magazine capacity by <div class=\"bluein\">10</div> rounds.<br><br>Note: Does not apply to sniper rifles.</span>", "<span><div class=\"blueh2\">弹夹扩容</div><br><strong class=\"blue\">入门级</strong> 4 技能点<br>你的每个武器的弹夹都增加 <div class=\"bluein\">5</div> 发。<br><strong class=\"blue\">专家级</strong> 8 技能点<br>每个弹夹额外增加 <div class=\"bluein\">10</div> 发。<br><br>注意：狙击枪不享受此效果。</span>");
             //Bulletproof
-            text = text.replaceAll("", "");
+            text = text.replaceAll("<span><div class=\"blueh2\">Bulletproof</div><br><strong class=\"blue\">Basic</strong> 4 Skillpoints<br>Improves your armor so you can absorb <div class=\"bluein\">50%</div> more damage.<br><strong class=\"blue\">Ace</strong> 8 Skillpoints<br>The armor recovery rate of you and your crew is increased by <div class=\"bluein\">25%</div>.</span>", "<span><div class=\"blueh2\">防弹</div><br><strong class=\"blue\">入门级</strong> 4 技能点<br>你的装甲能额外吸收 <div class=\"bluein\">50%</div> 的伤害。<br><strong class=\"blue\">专家级</strong> 8 技能点<br>提升 <div class=\"bluein\">25%</div> 的装甲恢复速度给你和你的队友。</span>");
             break;
         //幽灵
         case 4:
