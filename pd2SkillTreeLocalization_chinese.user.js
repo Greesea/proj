@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id          pd2SkillTreeLocalization_chinese
 // @name        pd2stats技能树汉化
-// @description 替换pd2stats的技能树文本_暴徒100%
+// @description 替换pd2stats的技能树文本_技师100%
 // @namespace   pd2statsSkillTreeLocalization_chinese
 // @include     http://pd2stats.com/stats.php?*
 // @require     http://code.jquery.com/jquery-1.11.1.js
