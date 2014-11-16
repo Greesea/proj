@@ -1,6 +1,6 @@
 // ==UserScript==
 // @id          bilibiliQuickRedeem
-// @name        bilibili快速兑换
+// @name        bilibili快捷兑换
 // @description 对bilibili官方的兑换码添加快速兑换
 // @namespace   bilibiliQuickRedeem
 // @include     http://member.bilibili.com/*
@@ -35,15 +35,15 @@ function bilibiliRedeemLoad(){
 					return;
 				}
 				if(data.code==-1){
-					console.log("bilibiliRedeem:"+data.msg);
+					alert(data.msg);
 				} else if(data.code==0){
 					alert(data.msg);
 				} else{
-					console.log(data);
+					alert(data);
 				}
 			},
 			error:function(){
-				console.log("bilibiliRedeem:网络错误")
+				alert("bilibiliRedeem:网络错误")
 			}
 		});
 	}
