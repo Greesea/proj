@@ -5,7 +5,7 @@
 // @include     http://tieba.baidu.com/*
 // @exclude     http://tieba.baidu.com/tb*
 // @exclude     http://tieba.baidu.com/bawu2*
-// @version     I
+// @version     II
 // @grant       none
 // @author      Greesea
 // ==/UserScript==
@@ -27,6 +27,10 @@ $(function () {
         info_repeatBan: "[{:name}] 循环 贴吧：{:tieba}\t用户：{:username} \t结果：{:result}\t{:resp}",//普通方式 循环Ban
         info_repeatComplete: "[{:name}] 循环 完成 成功率:{:rate}%",//普通方式 循环结束
         info_funcDisplayFmt: "贴吧:{:tieba}\t用户:{:username}",//普通方式 查询所有用户
+        info_outputHint: "请将下面这行复制并保留",//导出提示
+        info_loadHint: "请将之前获得的文本粘贴进文本框",//导入提示
+        info_loadSuccess: "导入成功",//导入成功
+        info_loadFail: "导入失败",//导入失败
         err_requireLocalStorage: "当前浏览器不支持HTML 5 LocalStorage. 脚本:{:name}",//错误 浏览器不支持LocalStorage
         tooltip_alreadyIn: "{:username} 已在封禁列表",//提示 用户已存在
         tooltip_banComplete: "{:username} 封禁{:result} {:resp}",//提示 用户封禁
@@ -53,38 +57,21 @@ $(function () {
         },
 
         //request
-        tbsRequestUrl: "http://tieba.baidu.com/dc/common/tbs",
-        banRequestUrl: "http://tieba.baidu.com/pmc/blockid",
-        ie: "gbk",//意义不明的参数
+        tbsRequestUrl: "http://tieba.baidu.com/dc/common/tbs",//如果脚本未失效请勿修改
+        banRequestUrl: "http://tieba.baidu.com/pmc/blockid",//如果脚本未失效请勿修改
+        ie: "gbk",//如果脚本未失效请勿修改
         //Tracker
         bawuTracker: unsafeWindow.PageData.is_posts_admin !== 0,//如果脚本未失效请勿修改
         tiebaNameTracker: unsafeWindow.PageData.forum.forum_name,//如果脚本未失效请勿修改
-        tiebaIdTracker: unsafeWindow.PageData.forum.forum_id,
+        tiebaIdTracker: unsafeWindow.PageData.forum.forum_id,//如果脚本未失效请勿修改
         selfNameTracker: unsafeWindow.PageData.user.name,//如果脚本未失效请勿修改
-        tbsTracker: unsafeWindow.PageData.tbs
+        tbsTracker: unsafeWindow.PageData.tbs//如果脚本未失效请勿修改
     };
-
-    //console.log(lang);
-    console.log(base);
 
     //-----Script-----
     if (!!localStorage) {
         function ban(username, pid) {
             var result = null;
-            //var tbs = "";
-            //
-            //$.ajax({
-            //    url: base.tbsRequestUrl,
-            //    type: "get",
-            //    dataType: "json",
-            //    async: false,
-            //    success: function (d) {
-            //        tbs = d["tbs"];
-            //    },
-            //    error: function () {
-            //        tooltip("获取tbs异常", base.tooltipConfigOnFail);
-            //    }
-            //});
 
             $.ajax({
                 url: base.banRequestUrl,
@@ -123,18 +110,6 @@ $(function () {
             }
 
             return null;
-        };
-
-        String.prototype.format = function (args) {
-            if (!(args instanceof Array))
-                args = [args];
-
-            var val = this.toString();
-            for (var i = 0; i < args.length; i++) {
-                val = val.replace(new RegExp("(\\{" + i + "})", "g"), args[i]);
-            }
-
-            return val;
         };
 
         String.prototype.fill = function (key, value) {
@@ -201,17 +176,19 @@ $(function () {
 
         //region Storage
         var storage = undefined;
-        try {
-            storage = JSON.parse(localStorage[base.storageKey]);
-            console.log(storage);
+
+        function parse(data) {
+            try {
+                storage = JSON.parse(data);
+            }
+            catch (e) {
+                return false;
+            }
+            return !(!storage || !(storage instanceof Object) || storage.type !== base.typeName);
         }
-        catch (e) {
-            //ignore
-        }
-        finally {
-            if (!storage || !(storage instanceof Object) || storage.type !== base.typeName)
-                storage = new BlockStorage();
-        }
+
+        if (!parse(localStorage[base.storageKey]))
+            storage = new BlockStorage();
 
         function save() {
             localStorage[base.storageKey] = JSON.stringify(storage);
@@ -482,6 +459,26 @@ $(function () {
             }
 
             return false;
+        };
+        rbs.output = function () {
+            console.log(lang.info_outputHint);
+            console.log(JSON.stringify(storage));
+        };
+
+        rbs.load = function () {
+            var result = prompt(lang.info_loadHint);
+
+            if (parse(result))
+                console.log(lang.info_loadSuccess);
+            else
+                console.log(lang.info_loadFail);
+
+            save();
+        };
+
+        rbs.reset = function () {
+            storage = new BlockStorage();
+            save();
         };
 
         window._rbs = rbs;
