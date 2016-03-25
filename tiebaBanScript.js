@@ -5,7 +5,7 @@
 // @include     http://tieba.baidu.com/*
 // @exclude     http://tieba.baidu.com/tb*
 // @exclude     http://tieba.baidu.com/bawu2*
-// @version     II
+// @version     III
 // @grant       none
 // @author      Greesea
 // ==/UserScript==
@@ -13,14 +13,24 @@
 //Important! Require HTML 5 LocalStorage Support
 //查看所有用户：_rbs.getAll();
 //删除用户：_rbs.remove(贴吧名,用户名);
-
+//导出：_rbs.output();
+//导入：_rbs.load();
+//重置(不输入贴吧名则清空全部)：_rbs.reset(贴吧名);
 $(function () {
     //-----Config-----
+    //设置内容请自行备份 每次更新都将重置(保存的封禁用户不会被重置 除非更换storageKey或typeName)
     var lang = {
         name: "十封循",//脚本名
-        labelName: "十封循",//封禁按钮文本
         success: "成功",//成功
         fail: "失败",//失败
+        btn_labelName: "十封循",//封禁按钮文本
+        menu_separator: "------",//菜单 分割线
+        menu_forceRepeatLabel: "立即循环封禁",//菜单 立即循环封禁
+        menu_displayCurrentBarListLabel: "显示本吧列表",//菜单 弹出当前贴吧的封禁列表
+        menu_displayAllLabel: "显示全部",//菜单 弹出全部的封禁信息
+        menu_displayEmpty: "[无]",//菜单 封禁列表不存在或没有包含用户
+        menu_outputLabel: "导出设置",//菜单 导出
+        menu_loadLabel: "导入设置",//菜单 导入
         info_alreadyIn: "用户 {:username} 已在封禁列表",//普通方式 用户已存在
         info_banComplete: "用户名:{:username}\n{:result}",//普通方式 用户封禁
         info_repeatStart: "[{:name}] 循环 间隔日期：{:diff}天",//普通方式 开始循环
@@ -37,7 +47,8 @@ $(function () {
         tooltip_repeatStart: "循环开始 请勿关闭页面或跳转页面<br/>距离上次间隔{:diff}天",//提示 开始循环
         tooltip_repeatBan: "[{:tieba}吧] {:username} {:result} {:resp}",//提示 循环Ban
         tooltip_repeatComplete: "循环完成 成功率:{:rate}%",//提示 循环结束
-        tooltip_needMove: "<strong>封禁到期</strong><br/>非帖子页无法封禁用户<br/>请移步至任意一个帖子开始封禁"//提示 需要跳转
+        tooltip_needMove: "<strong>封禁到期</strong><br/>非帖子页无法封禁用户<br/>请移步至任意一个帖子开始封禁",//提示 需要跳转
+        tooltip_networkErr: "封禁通讯异常"//请求发送失败
     };
 
     var base = {
@@ -56,19 +67,350 @@ $(function () {
             fontColor: "red"
         },
 
+        //------------ 下面的设置部分如果不是熟悉javascript并脚本失效请勿修改 ------------
+        //version
+        storageVersion: 2,
         //request
-        tbsRequestUrl: "http://tieba.baidu.com/dc/common/tbs",//如果脚本未失效请勿修改
-        banRequestUrl: "http://tieba.baidu.com/pmc/blockid",//如果脚本未失效请勿修改
-        ie: "gbk",//如果脚本未失效请勿修改
+        tbsRequestUrl: "http://tieba.baidu.com/dc/common/tbs",
+        banRequestUrl: "http://tieba.baidu.com/pmc/blockid",
+        ie: "gbk",
         //Tracker
-        bawuTracker: unsafeWindow.PageData.is_posts_admin !== 0,//如果脚本未失效请勿修改
-        tiebaNameTracker: unsafeWindow.PageData.forum.forum_name,//如果脚本未失效请勿修改
-        tiebaIdTracker: unsafeWindow.PageData.forum.forum_id,//如果脚本未失效请勿修改
-        selfNameTracker: unsafeWindow.PageData.user.name,//如果脚本未失效请勿修改
-        tbsTracker: unsafeWindow.PageData.tbs//如果脚本未失效请勿修改
+        bawuTracker: unsafeWindow.PageData.is_posts_admin !== 0,
+        tiebaNameTracker: unsafeWindow.PageData.forum.forum_name,
+        tiebaIdTracker: unsafeWindow.PageData.forum.forum_id,
+        selfNameTracker: unsafeWindow.PageData.user.name,
+        tbsTracker: unsafeWindow.PageData.tbs
     };
 
     //-----Script-----
+
+    //region Support
+    //List library is a copy from https://github.com/Greesea/GearCase4Js
+    function listCheckFunctionBoolean(value) {
+        if (typeof value === "number")
+            return value > 0;
+        else if (typeof value === "boolean")
+            return value;
+        return null;
+    }
+
+    function listCheckFunctionNumber(value) {
+        if (typeof value === "number")
+            return value;
+        return null;
+    }
+
+    function listCalculate(array, func) {
+        var obj = {
+            sum: 0,
+            count: 0,
+            avg: 0,
+            min: 0,
+            max: 0
+        };
+
+        for (var i = 0; i < array.length; i++) {
+            var result = listCheckFunctionNumber(func(array[i]));
+
+            if (i === 0)
+                obj.min = result;
+
+            if (result != null) {
+                obj.sum += result;
+                obj.count++;
+                if (result < obj.min)
+                    obj.min = result;
+                if (result > obj.max)
+                    obj.max = result;
+            } else {
+                log.t(["Types-List", ":", "Invalid function result."]);
+            }
+        }
+
+        obj.avg = obj.sum / obj.count;
+
+        return obj;
+    }
+
+    function List(array) {
+        if (!array)
+            array = [];
+
+        for (var i = 0; i < array.length; i++) {
+            this.valueOf().push(array[i]);
+        }
+
+        //方法
+        this["clear"] = function () {
+            for (var i = 0; i < this.length; i++) {
+                this[i] = undefined;
+            }
+
+            this.length = 0;
+            return this;
+        };
+
+        this["clone"] = function (depth) {
+            if (depth == undefined)
+                depth = false;
+
+            var newArr = new List();
+            for (var i = 0; i < this.length; i++) {
+                if (depth) {
+                    if (this[i]["clone"] != null)
+                        newArr.push(this[i]["clone"]());
+                    else if (this[i]["Clone"] != null)
+                        newArr.push(this[i]["Clone"]());
+                    else if (this[i]["Copy"] != null)
+                        newArr.push(this[i]["Copy"]());
+                    else
+                        newArr.push(this[i]);
+                } else
+                    newArr.push(this[i]);
+            }
+
+            return newArr;
+        };
+
+        this["append"] = function (array) {
+            for (var i = 0; i < array.length; i++) {
+                this.push(array[i]);
+            }
+
+            return this;
+        };
+
+        this["exists"] = function (value, strict) {
+            if (strict == null)
+                strict = false;
+
+            return this
+                    .where(function (v) {
+                        if (strict)
+                            return v === value;
+                        else
+                            return v == value;
+                    })
+                    .first() != null;
+        };
+
+        this["indexOf"] = function (value, strict) {
+            if (strict == null)
+                strict = false;
+
+            for (var i = 0; i < this.length; i++) {
+                if ((this[i] === value && strict) || (this[i] == value && !strict))
+                    return i;
+            }
+
+            return -1;
+        };
+
+        this["lastIndexOf"] = function (value, strict) {
+            if (strict == null)
+                strict = false;
+
+            for (var i = this.length - 1; i >= 0; i--) {
+                if ((this[i] === value && strict) || (this[i] == value && !strict))
+                    return i;
+            }
+
+            return -1;
+        };
+
+        this["remove"] = function (value, strict) {
+            if (strict == null)
+                strict = false;
+
+            var index = this.indexOf(value, strict);
+            if (index !== -1)
+                this.removeAt(index);
+            return this;
+        };
+
+        this["removeAt"] = function (index) {
+            var right = new List(this.splice(index + 1, this.length - index));
+            var left = new List(this.splice(0, index));
+
+            this.clear();
+            this.append(left.append(right));
+            return this;
+        };
+
+        this["toArray"] = function (depth) {
+            if (depth == undefined)
+                depth = true;
+
+            var arr = [];
+
+            for (var i = 0; i < this.length; i++) {
+                if (depth) {
+                    if (this[i]["toArray"] != null)
+                        arr.push(this[i]["toArray"]());
+                    else if (this[i]["toarray"] != null)
+                        arr.push(this[i]["toarray"]());
+                    else if (this[i]["getArray"] != null)
+                        arr.push(this[i]["getArray"]());
+                    else
+                        arr.push(this[i]);
+                } else
+                    arr.push(this[i]);
+            }
+
+            return arr;
+        };
+
+        this["each"] = function (func) {
+            if (typeof func !== "function")
+                log.t(["Types-List", ":", "Invalid function."]);
+
+            for (var i = 0; i < this.length; i++)
+                func(this[i]);
+        };
+
+        //投影方法
+        this["select"] = function (func) {
+            if (typeof func !== "function")
+                log.t(["Types-List", ":", "Invalid function."]);
+
+            var newArr = new List();
+            for (var i = 0; i < this.length; i++) {
+                var result = func(this[i]);
+                newArr.push(result);
+            }
+
+            return newArr;
+        };
+
+        //筛选方法
+        this["where"] = function (func) {
+            if (typeof func !== "function")
+                log.t(["Types-List", ":", "Invalid function."]);
+
+            var newArr = new List();
+            for (var i = 0; i < this.length; i++) {
+                var result = listCheckFunctionBoolean(func(this[i]));
+
+                if (!!result) {
+                    newArr.push(this[i]);
+                } else if (result == null) {
+                    log.t(["Types-List", ":", "Invalid function result."]);
+                }
+            }
+
+            return newArr;
+        };
+
+        //排序方法
+        this["orderBy"] = function (func) {
+            if (typeof func !== "function")
+                log.t(["Types-List", ":", "Invalid function."]);
+
+            var clone = this.clone();
+            for (var i = 0; i < clone.length - 1; i++) {
+                for (var j = 0; j < clone.length - 1 - i; j++) {
+                    var result = listCheckFunctionBoolean(func(clone[j], clone[j + 1]));
+
+                    if (!!result) {
+                        var temp = clone[j];
+                        clone[j] = clone[j + 1];
+                        clone[j + 1] = temp;
+                    } else if (result == null) {
+                        log.t(["Types-List", ":", "Invalid function result."]);
+                    }
+                }
+            }
+
+            return clone;
+        };
+
+        //集方法
+        this["distinct"] = function () {
+            var newArr = new List();
+            for (var i = 0; i < this.length; i++) {
+                if (!newArr.exists(this[i], true))
+                    newArr.push(this[i]);
+            }
+
+            return newArr;
+        };
+
+        //聚合方法
+        this["sum"] = function (func) {
+            if (typeof func !== "function")
+                log.t(["Types-List", ":", "Invalid function."]);
+
+            return listCalculate(this, func).sum;
+        };
+
+        this["avg"] = function (func) {
+            if (typeof func !== "function")
+                log.t(["Types-List", ":", "Invalid function."]);
+
+            return listCalculate(this, func).avg;
+        };
+
+        this["min"] = function (func) {
+            if (typeof func !== "function")
+                log.t(["Types-List", ":", "Invalid function."]);
+
+            return listCalculate(this, func).min;
+        };
+
+        this["max"] = function (func) {
+            if (typeof func !== "function")
+                log.t(["Types-List", ":", "Invalid function."]);
+
+            return listCalculate(this, func).max;
+        };
+
+        //分区方法
+        this["single"] = function () {
+            if (this.length == 1)
+                return this[0];
+            else if (this.length > 0)
+                log.t(["Types-List", ":", "Array contains more than one element."]);
+            return null;
+        };
+
+        this["first"] = function () {
+            if (this.length > 0)
+                return this[0];
+            return null;
+        };
+
+        this["skip"] = function (value) {
+            if (value < 0)
+                value = 0;
+            var newArr = new List();
+            for (var i = value; i < this.length; i++) {
+                newArr.push(this[i]);
+            }
+
+            return newArr;
+        };
+
+        this["take"] = function (value) {
+            if (value < 0)
+                value = 0;
+            if (value > this.length)
+                value = this.length;
+            var newArr = new List();
+            for (var i = 0; i < value; i++) {
+                newArr.push(this[i]);
+            }
+
+            return newArr;
+        };
+    }
+
+    List.prototype = [];
+
+    String.prototype.fill = function (key, value) {
+        return this.replace(new RegExp("(\\{:" + key + "})", "g"), value);
+    };
+    //endregion
+
     if (!!localStorage) {
         function ban(username, pid) {
             var result = null;
@@ -94,74 +436,27 @@ $(function () {
                         result.state = true;
                 },
                 error: function () {
-                    tooltip("封禁通讯异常", base.tooltipConfigOnFail);
+                    tooltip(lang.tooltip_networkErr, base.tooltipConfigOnFail);
                 }
             });
 
             return result;
         }
 
-        //region Support
-        Array.prototype.findByProp = function (prop, name) {
-            for (var i = 0; i < this.length; i++) {
-                if (this[i][prop] === name) {
-                    return this[i];
-                }
-            }
-
-            return null;
-        };
-
-        String.prototype.fill = function (key, value) {
-            return this.replace(new RegExp("(\\{:" + key + "})", "g"), value);
-        };
-
-        try {
-            [].remove("");
-        } catch (e) {
-            if (e !== "")
-                Array.prototype.remove = function (val) {
-                    var index = this.indexOf(val);
-
-                    if (index !== -1) {
-                        return this.removeAt(index);
-                    }
-                    return this;
-                }
-        }
-
-        try {
-            [].removeAt("");
-        } catch (e) {
-            if (e !== "")
-                Array.prototype.removeAt = function (index) {
-                    var after = this.splice(index + 1, this.length - index);
-                    var before = this.splice(0, index);
-
-                    var result = before.concat(after);
-
-                    this.length = 0;
-                    for (var i = 0; i < result.length; i++) {
-                        this.push(result[i]);
-                    }
-                    return this;
-                }
-        }
-        //endregion
-
         //region Constructor
         function BlockStorage() {
             return {
+                version: 2,
                 type: base.typeName,
-                date: null,
-                list: []//BlockIndex
+                list: new List()//BlockIndex
             }
         }
 
         function BlockIndex(name) {
             return {
                 name: name,
-                items: []//Username
+                date: getDate(),
+                items: new List()//Users
             }
         }
 
@@ -175,29 +470,71 @@ $(function () {
         //endregion
 
         //region Storage
-        var storage = undefined;
+        var storage = new BlockStorage();
+
+        function stringify() {
+            var obj = new BlockStorage();
+            obj.list = [];
+
+            storage.list.each(function (i) {
+                obj.list.push({name: i.name, date: i.date, items: i.items.toArray()});
+            });
+
+            return JSON.stringify(obj);
+        }
+
+        function save() {
+            localStorage[base.storageKey] = stringify();
+        }
 
         function parse(data) {
-            try {
-                storage = JSON.parse(data);
-            }
-            catch (e) {
+            if (data === undefined)
+                data = null;
+
+            var tryParse = JSON.parse(data);
+
+            if (!!tryParse && tryParse instanceof Object && tryParse.type === base.typeName) {
+                if (!tryParse.hasOwnProperty("version")) {
+                    tryParse.version = 1;
+                }
+                if (tryParse.version !== base.storageVersion) {
+                    switch (tryParse.version) {
+                        case 1:
+                            var date = tryParse["date"];
+                            var newObj = new BlockStorage();
+                            newObj.list = [];
+
+                            for (var i = 0; i < tryParse.list.length; i++) {
+                                tryParse.list[i]["date"] = date;
+                                newObj.list.push(tryParse.list[i]);
+                            }
+
+                            tryParse = newObj;
+                            break;
+                    }
+                }
+
+                tryParse.list = new List(tryParse.list);
+
+                tryParse.list.each(function (i) {
+                    i.items = new List(i.items);
+                });
+
+                storage = tryParse;
+                return true;
+            } else {
                 return false;
             }
-            return !(!storage || !(storage instanceof Object) || storage.type !== base.typeName);
         }
 
         if (!parse(localStorage[base.storageKey]))
             storage = new BlockStorage();
-
-        function save() {
-            localStorage[base.storageKey] = JSON.stringify(storage);
-        }
+        save();
 
         //endregion
 
         //region Tooltip
-        var tooltipArray = [];
+        var tooltipArray = new List();
         var tooltipBody = $("body");
 
         function tooltip(text, config) {
@@ -300,9 +637,9 @@ $(function () {
             }
 
             var fmt = "y-m-d";
-            fmt = fmt.replace(/y/g, date.getFullYear());
-            fmt = fmt.replace(/m/g, date.getMonth() + 1);
-            fmt = fmt.replace(/d/g, date.getDate());
+            fmt = fmt.replace(/y/g, date.getFullYear().toString());
+            fmt = fmt.replace(/m/g, (date.getMonth() + 1).toString());
+            fmt = fmt.replace(/d/g, date.getDate().toString());
 
             return fmt;
         }
@@ -330,60 +667,73 @@ $(function () {
         //endregion
 
         //region RepeatBan
-        if (!storage.date) {
-            storage.date = getDate();
-            save();
-        }
-        else {
-            var diff = dateDiff(new Date(), toDate(storage.date));
-            if (diff >= (base.banInterval - 1)) {
-                if (/^(http(s)?:\/\/tieba\.baidu\.com\/f\?)/.test(location.href)) {
-                    tooltip(lang.tooltip_needMove, base.tooltipConfigDefault);
-                }
-                else if (/^(http(s)?:\/\/tieba\.baidu\.com\/p\/)/.test(location.href)) {
-                    console.log(lang.info_repeatStart.fill("name", lang.name).fill("diff", diff));
-                    tooltip(lang.tooltip_repeatStart.fill("diff", diff), base.tooltipConfigDefault);
-
-                    var total = 0;
-                    var succ = 0;
-                    for (var i = 0; i < storage.list.length; i++) {
-                        var tieba = storage.list[i];
-                        total += tieba.items.length;
-
-                        for (var j = 0; j < tieba.items.length; j++) {
-                            var result = ban(tieba.items[j].username, tieba.items[j].pid);
-                            if (!result)
-                                result = {state: false};
-                            if (result.state)
-                                succ++;
-
-                            console.log(
-                                lang.info_repeatBan
-                                    .fill("name", lang.name)
-                                    .fill("tieba", tieba.name)
-                                    .fill("username", tieba.items[j].username)
-                                    .fill("result", result.state ? lang.success : lang.fail)
-                                    .fill("resp", "{" + result.msg + "}")
-                            );
-                            tooltip(
-                                lang.tooltip_repeatBan
-                                    .fill("tieba", tieba.name)
-                                    .fill("username", tieba.items[j].username)
-                                    .fill("result", result.state ? lang.success : lang.fail)
-                                    .fill("resp", "{" + result.msg + "}")
-                                , result.state ? base.tooltipConfigOnSuccess : base.tooltipConfigOnFail
-                            )
-                        }
-                    }
-
-                    var rate = (total === 0) ? 100 : (succ === 0 ? 0 : (total / succ) * 100);
-                    console.log(lang.info_repeatComplete.fill("name", lang.name).fill("rate", rate));
-                    tooltip(lang.tooltip_repeatComplete.fill("rate", rate), base.tooltipConfigDefault);
-                    storage.date = getDate();
+        storage.list.each(function (i) {
+            if (i.name === base.tiebaNameTracker)
+                if (!i.date) {
+                    i.date = getDate();
                     save();
+                } else {
+                    var diff = dateDiff(new Date(), toDate(i.date));
+                    if (diff >= (base.banInterval - 1)) {
+                        Repeat(diff, i.name);
+                    }
                 }
+        });
+
+        function Repeat(diff, tiebaName) {
+            if (!tiebaName)
+                return;
+
+            if (!diff)
+                diff = -1;
+
+            if (/^(http(s)?:\/\/tieba\.baidu\.com\/f\?)/.test(location.href)) {
+                tooltip(lang.tooltip_needMove, base.tooltipConfigDefault);
+            }
+            else if (/^(http(s)?:\/\/tieba\.baidu\.com\/p\/)/.test(location.href)) {
+                console.log(lang.info_repeatStart.fill("name", lang.name).fill("diff", diff));
+                tooltip(lang.tooltip_repeatStart.fill("diff", diff), base.tooltipConfigDefault);
+
+                var tieba = storage.list.where(function (i) {
+                    return i.name === tiebaName;
+                }).first();
+
+                var total = tieba.items.length;
+                var succ = 0;
+                tieba.items.each(function (i) {
+                    var result = ban(i.username, i.pid);
+
+                    if (!result)
+                        result = {state: false};
+                    if (result.state)
+                        succ++;
+
+                    console.log(
+                        lang.info_repeatBan
+                            .fill("name", lang.name)
+                            .fill("tieba", tieba.name)
+                            .fill("username", i.username)
+                            .fill("result", result.state ? lang.success : lang.fail)
+                            .fill("resp", "{" + result.msg + "}")
+                    );
+                    tooltip(
+                        lang.tooltip_repeatBan
+                            .fill("tieba", tieba.name)
+                            .fill("username", i.username)
+                            .fill("result", result.state ? lang.success : lang.fail)
+                            .fill("resp", "{" + result.msg + "}")
+                        , result.state ? base.tooltipConfigOnSuccess : base.tooltipConfigOnFail
+                    )
+                });
+
+                var rate = (total === 0) ? 100 : (succ === 0 ? 0 : (total / succ) * 100);
+                console.log(lang.info_repeatComplete.fill("name", lang.name).fill("rate", rate));
+                tooltip(lang.tooltip_repeatComplete.fill("rate", rate), base.tooltipConfigDefault);
+                tieba.date = getDate();
+                save();
             }
         }
+
         //endregion
 
         //region AddToBan
@@ -392,7 +742,7 @@ $(function () {
                 var self = $(elem);
 
                 if (self.text() !== base.selfNameTracker) {
-                    self.parent().parent().parent().next().find(".post-tail-wrap").prepend($("<span class='script-block-user-btn' style='color:{:color};cursor:pointer;'>{:labelName}</span>".fill("labelName", lang.labelName).fill("color", base.color)));
+                    self.parent().parent().parent().next().find(".post-tail-wrap").prepend($("<span class='script-block-user-btn' style='color:{:color};cursor:pointer;'>{:labelName}</span>".fill("labelName", lang.btn_labelName).fill("color", base.color)));
                 }
             });
 
@@ -400,19 +750,24 @@ $(function () {
                 var username = $(this).parent().parent().parent().parent().prev().find(".d_name").find("a").text();
                 var pid = $(this).parent().parent().parent().parent().parent().data("field").content.post_id;
 
-                var index = storage.list.findByProp("name", base.tiebaNameTracker);
+                //var index = storage.list.findByProp("name", base.tiebaNameTracker);
+                var index = storage.list.where(function (i) {
+                    return i.name === base.tiebaNameTracker;
+                }).first();
+
                 if (!index) {
                     index = new BlockIndex(base.tiebaNameTracker);
                     storage.list.push(index);
                     save();
                 }
 
-                var find = index.items.findByProp("username", username);
-                if (!find) {
+                var find = index.items.where(function (i) {
+                    return i.username === username;
+                });
+                if (find.length === 0) {
                     var result = ban(username, pid);
                     if (!result)
                         result = {state: false};
-                    //alert(lang.info_banComplete.fill("username", username).fill("result", result ? lang.success : lang.fail));
                     tooltip(
                         lang.tooltip_banComplete
                             .fill("username", username)
@@ -425,10 +780,88 @@ $(function () {
                         save();
                     }
                 } else {
-                    //alert(lang.info_alreadyIn.fill("username", username));
                     tooltip(lang.tooltip_alreadyIn.fill("username", username), base.tooltipConfigOnFail);
                 }
             });
+        }
+        //endregion
+
+        //region menu
+        if (base.bawuTracker && /^(http(s)?:\/\/tieba\.baidu\.com\/p\/)/.test(location.href)) {
+            function genMenuItem(id, text) {
+                return $("<li class='u_itieba'><a href='#' id='{:id}'>{:text}</a></li>".fill("id", id).fill("text", text));
+            }
+
+            setTimeout(function () {
+                var repeatLabel = genMenuItem("script-block-menu-repeat", lang.menu_forceRepeatLabel);
+                var currentLabel = genMenuItem("script-block-menu-current", lang.menu_displayCurrentBarListLabel);
+                var allLabel = genMenuItem("script-block-menu-all", lang.menu_displayAllLabel);
+                var outputLabel = genMenuItem("script-block-menu-output", lang.menu_outputLabel);
+                var loadLabel = genMenuItem("script-block-menu-load", lang.menu_loadLabel);
+
+                repeatLabel.click(function () {
+                    Repeat(-1, base.tiebaNameTracker);
+                });
+
+                currentLabel.click(function () {
+                    var tieba = storage.list.where(function (i) {
+                        return i.name === base.tiebaNameTracker;
+                    }).first();
+
+                    if (!tieba || tieba.items.length === 0)
+                        alert(lang.menu_displayEmpty);
+                    else {
+                        var str = "";
+
+                        tieba.items.each(function (i) {
+                            str += i.username + "\n";
+                        });
+
+                        alert(str);
+                    }
+                });
+
+                allLabel.click(function () {
+                    var total = storage.list.sum(function (i) {
+                        return i.items.length;
+                    });
+
+                    if (total <= 0)
+                        alert(lang.menu_displayEmpty);
+                    else {
+                        var str = "";
+
+                        storage.list.each(function (i) {
+                            i.items.each(function (j) {
+                                str += lang.info_funcDisplayFmt.fill("tieba", i.name).fill("username", j.username) + "\n";
+                            })
+                        });
+
+                        alert(str);
+                    }
+                });
+
+                outputLabel.click(function () {
+                    alert(lang.info_outputHint + "\n" + stringify());
+                });
+
+                loadLabel.click(function () {
+                    var result = prompt(lang.info_loadHint);
+
+                    if (!!result && parse(result))
+                        alert(lang.success);
+                    else
+                        alert(lang.fail);
+                });
+
+                $("#com_userbar").find("#j_u_username .u_ddl .u_ddl_con_top ul")
+                    .append(genMenuItem("script-block-menu-separator", lang.menu_separator))
+                    .append(repeatLabel)
+                    .append(currentLabel)
+                    .append(allLabel)
+                    .append(outputLabel)
+                    .append(loadLabel);
+            }, 5000);
         }
         //endregion
 
@@ -436,39 +869,39 @@ $(function () {
         var rbs = {};
         rbs.getAll = function () {
             console.log("-------------------------------------");
-            for (var i = 0; i < storage.list.length; i++) {
-                var tieba = storage.list[i];
-                for (var j = 0; j < tieba.items.length; j++) {
-                    console.log(lang.info_funcDisplayFmt.fill("tieba", tieba.name).fill("username", tieba.items[i].username));
-                }
-            }
+            storage.list.each(function (i) {
+                i.items.each(function (j) {
+                    console.log(lang.info_funcDisplayFmt.fill("tieba", i.name).fill("username", j.username));
+                })
+            });
             console.log("-------------------------------------");
         };
         rbs.remove = function (tiebaName, username) {
-            for (var i = 0; i < storage.list.length; i++) {
-                var tieba = storage.list[i];
+            var tieba = storage.list
+                .where(function (i) {
+                    return i.name === tiebaName;
+                })
+                .first();
 
-                if (tieba.name === tiebaName)
-                    for (var j = 0; j < tieba.items.length; j++) {
-                        if (tieba.items[j].username === username) {
-                            tieba.items.remove(tieba.items[j]);
-                            save();
-                            return true;
-                        }
-                    }
-            }
+            var user = tieba.items.where(function (i) {
+                return i.username === username;
+            }).first();
 
-            return false;
+            if (!user)
+                return false;
+
+            tieba.list.remove(user);
+            return true;
         };
         rbs.output = function () {
             console.log(lang.info_outputHint);
-            console.log(JSON.stringify(storage));
+            console.log(stringify());
         };
 
         rbs.load = function () {
             var result = prompt(lang.info_loadHint);
 
-            if (parse(result))
+            if (!!result && parse(result))
                 console.log(lang.info_loadSuccess);
             else
                 console.log(lang.info_loadFail);
@@ -476,12 +909,31 @@ $(function () {
             save();
         };
 
-        rbs.reset = function () {
-            storage = new BlockStorage();
+        rbs.reset = function (tiebaName) {
+            if (!tiebaName)
+                storage = new BlockStorage();
+            else {
+                var tieba = storage.list.where(function (i) {
+                    return i.name === tiebaName;
+                }).first();
+
+                if (!!tieba)
+                    storage.list.remove(tieba);
+            }
             save();
         };
 
+        rbs.debug = {
+            forceRepeat: function () {
+                Repeat(-1, base.tiebaNameTracker);
+            },
+            getStorage: function () {
+                return storage;
+            }
+        };
+
         window._rbs = rbs;
+
         //endregion
     }
     else
