@@ -5,7 +5,7 @@
 // @include     http://tieba.baidu.com/*
 // @exclude     http://tieba.baidu.com/tb*
 // @exclude     http://tieba.baidu.com/bawu2*
-// @version     III
+// @version     III Fix.I
 // @grant       none
 // @author      Greesea
 // ==/UserScript==
@@ -55,7 +55,7 @@ $(function () {
         storageKey: "RepeatBanUserScript",//存储key
         typeName: "RepeatBanStorage",//类型名 读取配置时依靠此项判断是否为脚本配置
         banInterval: 10,//封禁时长(也是几天一循环)
-        reason: "测试用",//封禁理由
+        reason: "黑名单用户",//封禁理由
         color: "darkorange",//封禁按钮颜色
         tooltipConfigDefault: {//默认提示的样式(具体配置项与默认值请去脚本内找Tooltip内的cfg对象)
             fontColor: "white"
@@ -75,11 +75,11 @@ $(function () {
         banRequestUrl: "http://tieba.baidu.com/pmc/blockid",
         ie: "gbk",
         //Tracker
-        bawuTracker: unsafeWindow.PageData.is_posts_admin !== 0,
-        tiebaNameTracker: unsafeWindow.PageData.forum.forum_name,
-        tiebaIdTracker: unsafeWindow.PageData.forum.forum_id,
-        selfNameTracker: unsafeWindow.PageData.user.name,
-        tbsTracker: unsafeWindow.PageData.tbs
+        bawuTracker: window.PageData.is_posts_admin !== 0,
+        tiebaNameTracker: window.PageData.forum.forum_name,
+        tiebaIdTracker: window.PageData.forum.forum_id,
+        selfNameTracker: window.PageData.user.name,
+        tbsTracker: window.PageData.tbs
     };
 
     //-----Script-----
