@@ -1,3 +1,1 @@
-bilibiliQuickRedeem.user.js  --bilibili快捷兑换
-
-pd2SkillTreeLocalization_chinese.user  --替换pd2stats的技能树文本
+\* **加粗** 为持续更新的脚本|文件名|脚本名|最后更新||---|---|---||bilibiliQuickRedeem.user.js|bilibili快捷兑换|2014/11/16||pd2SkillTreeLocalization_chinese.user.js|替换pd2stats的技能树文本|2014/10/30||**tiebaBanScript.user.js**|**贴吧大封禁**|**2016/03/29**||**BilibiliListFilter.user.js**|**比利比利列表过滤器**|**2016/04/10**|
