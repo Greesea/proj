@@ -3,12 +3,14 @@
 // @namespace   DrakeWorks.Bilibili.List
 // @description 过滤不想看到的视频(只影响列表 不影响其它途径访问)
 // @include     http://www.bilibili.com/video/*.html*
-// @version     I
+// @version     I Fix.I
 // @grant       none
 // @author      Greesea
 // ==/UserScript==
 
 $(function () {
+    var $ = window.$;
+
     var base = {
         //设置内容请自行备份 每次更新都将重置(保存的筛选信息不会被重置 除非更换storageKey或typeName)
         storageKey: "BilibiliListFilterUserScript",//存储key
@@ -473,7 +475,7 @@ $(function () {
 
                 var search = category.items.clone(true);
                 if (!!all) {
-                    search.items.append(all.items.clone(true));
+                    search.append(all.items.clone(true));
                 }
 
                 var ul = base.listTracker.find("ul");
