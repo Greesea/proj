@@ -3,20 +3,28 @@
 // @namespace   DrakeWorks.Bilibili.List
 // @description 过滤不想看到的视频(只影响列表 不影响其它途径访问)
 // @include     http://www.bilibili.com/video/*.html*
-// @version     I Fix.I
-// @grant       none
+// @version     II
+// @grant       GM_setClipboard
 // @author      Greesea
 // ==/UserScript==
 
+//Important! Require HTML 5 LocalStorage Support
 $(function () {
-    var $ = window.$;
-
     var base = {
         //设置内容请自行备份 每次更新都将重置(保存的筛选信息不会被重置 除非更换storageKey或typeName)
         storageKey: "BilibiliListFilterUserScript",//存储key
         typeName: "BilibiliListFilterStorage",//类型名 读取配置时依靠此项判断是否为脚本配置
         counterColor: "darkorange",//计数器颜色
         triggerTimeout: 400,//触发延时
+        tooltipConfigDefault: {//默认提示的样式(具体配置项与默认值请去脚本内找Tooltip内的cfg对象)
+            fontColor: "white"
+        },
+        tooltipConfigOnSuccess: {//成功时提示的样式(具体配置项与默认值请去脚本内找Tooltip内的cfg对象)
+            fontColor: "lightgreen"
+        },
+        tooltipConfigOnFail: {//失败时提示的样式(具体配置项与默认值请去脚本内找Tooltip内的cfg对象)
+            fontColor: "red"
+        },
 
         //------------ 下面的设置部分如果不是熟悉javascript并脚本失效请勿修改 ------------
         //version
@@ -460,6 +468,110 @@ $(function () {
             save();
             //endregion
 
+            //region Tooltip
+            var tooltipArray = new List();
+            var tooltipBody = $("body");
+
+            function tooltip(text, config) {
+                function sort() {
+                    var totalHeight = 0;
+                    for (var i = 0; i < tooltipArray.length; i++) {
+                        var str = tooltipArray[i].css("height");
+                        str = str.substr(0, str.length - 2);
+                        totalHeight += parseInt(str);
+                    }
+                    totalHeight += ((tooltipArray.length * cfg.marginBorder) + cfg.baseBottom);
+
+                    for (var i = 0; i < tooltipArray.length; i++) {
+                        var div = tooltipArray[i];
+                        var str = div.css("height");
+                        str = str.substr(0, str.length - 2);
+                        totalHeight -= (cfg.marginBottom + parseInt(str));
+                        div.css({bottom: totalHeight});
+                    }
+                }
+
+                var cfg = {
+                    fontColor: "white",
+                    bgColor: "darkorange",
+                    width: 220,
+                    lineHeight: 35,
+                    baseBottom: 40,
+                    marginBottom: 20,
+                    marginBorder: 20,
+                    stayTimeout: 2500,
+                    fadeOutTimeout: 1000,
+                    textAlign: "center",
+                    className: "",
+                    zIndex: 100000,
+                    isLeft: false
+                };
+
+                if (config != null) {
+                    if (config["fontColor"] != null)
+                        cfg.fontColor = config["fontColor"];
+                    if (config["bgColor"] != null)
+                        cfg.bgColor = config["bgColor"];
+                    if (config["width"] != null)
+                        cfg.width = parseInt(config["width"]);
+                    if (config["lineHeight"] != null)
+                        cfg.lineHeight = parseInt(config["lineHeight"]);
+                    if (config["baseBottom"] != null)
+                        cfg.baseBottom = parseInt(config["baseBottom"]);
+                    if (config["marginBottom"] != null)
+                        cfg.marginBottom = parseInt(config["marginBottom"]);
+                    if (config["marginBorder"] != null)
+                        cfg.marginBorder = parseInt(config["marginBorder"]);
+                    if (config["stayTimeout"] != null)
+                        cfg.stayTimeout = parseInt(config["stayTimeout"]);
+                    if (config["fadeOutTimeout"] != null)
+                        cfg.fadeOutTimeout = parseInt(config["fadeOutTimeout"]);
+                    if (config["textAlign"] != null)
+                        cfg.textAlign = config["textAlign"];
+                    if (config["className"] != null)
+                        cfg.className = config["className"];
+                    if (config["zIndex"] != null)
+                        cfg.className = config["zIndex"];
+                    if (config["isLeft"] != null)
+                        cfg.marginBottom = config["isLeft"] === "true";
+                }
+
+                var div = $("<div></div>");
+                div.html(text);
+                div.css({
+                    "position": "fixed",
+                    "color": cfg.fontColor,
+                    "background-color": cfg.bgColor,
+                    "width": cfg.width + "px",
+                    "line-height": cfg.lineHeight + "px",
+                    "height": cfg.lineHeight + "px",
+                    "text-align": cfg.textAlign,
+                    "z-index": cfg.zIndex,
+                    "padding-left": "20px",
+                    "padding-right": "20px"
+                });
+
+                if (!!cfg.className)
+                    div.attr("class", cfg.className);
+                if (cfg.isLeft)
+                    div.css({"left": cfg.marginBorder + "px"});
+                else
+                    div.css({"right": cfg.marginBorder + "px"});
+
+                tooltipBody.append(div);
+                tooltipArray.push(div);
+                sort();
+
+                setTimeout(function () {
+                    div.fadeOut(cfg.fadeOutTimeout, function () {
+                        tooltipArray.remove(div);
+                        div.remove();
+                    });
+                }, cfg.stayTimeout)
+            }
+
+            //endregion
+
             //region Function
             function doFilter(categoryName) {
                 var category = storage.list
@@ -500,6 +612,20 @@ $(function () {
                                 break;
                             case "up_r":
                                 if (up.length > 0 && !up.text().exists(i.keyword)) {
+                                    element.hide();
+                                    hide++;
+                                    return true;
+                                }
+                                break;
+                            case "up_s":
+                                if (up.length > 0 && up.text() === i.keyword) {
+                                    element.hide();
+                                    hide++;
+                                    return true;
+                                }
+                                break;
+                            case "up_sr":
+                                if (up.length > 0 && up.text() !== i.keyword) {
                                     element.hide();
                                     hide++;
                                     return true;
@@ -736,13 +862,15 @@ $(function () {
                 '        <table>' +
                 '            <tr style="text-align:right;">' +
                 '                <td><label for="script-list-filter-menu-add-area">分区：</label></td>' +
-                '                <td><input id="script-list-filter-menu-add-area" type="text" style="width: 11em;"/></td>' +
+                '                <td><input id="script-list-filter-menu-add-area" type="text" style="width: 11em;" value="{:category}"/></td>' +
                 '            </tr>' +
                 '            <tr style="text-align:right;">' +
                 '                <td><label for="script-list-filter-menu-add-type">类型：</label></td>' +
                 '                <td><select id="script-list-filter-menu-add-type" style="width: 11em;">' +
                 '                    <option value="up">Up主中存在..</option>' +
                 '                    <option value="up_r">Up主中不存在..</option>' +
+                '                    <option value="up_s">Up主是..</option>' +
+                '                    <option value="up_sr">Up主不是..</option>' +
                 '                    <option value="spec">-----------------</option>' +
                 '                    <option value="title">标题中存在..</option>' +
                 '                    <option value="title_r">标题中不存在..</option>' +
@@ -798,21 +926,14 @@ $(function () {
                 '                    <th style="width: 30%;">关键字</th>' +
                 '                    <th style="width: 11%;"></th>' +
                 '                </tr>' +
-                '                <tr class="script-list-filter-menu-list-view-item">' +
-                '                    <td>测试测试测试</td>' +
-                '                    <td>播放数小于测试</td>' +
-                '                    <td style="overflow: hidden;">10000000000000000</td>' +
-                '                    <td>' +
-                '                        <a href="#">删除</a>' +
-                '                    </td>' +
-                '                </tr>' +
                 '            </table>' +
                 '        </div>' +
                 '        <br/>' +
-                '        <button class="script-list-filter-btn script-list-filter-btn-back">返回</button>&nbsp;&nbsp;&nbsp;<small>删除操作将在刷新页面后生效</small>' +
+                '        <button class="script-list-filter-btn script-list-filter-btn-back">返回</button>&nbsp;&nbsp;&nbsp;<small>*&nbsp;删除操作将在刷新页面后生效</small>' +
                 '    </div>' +
                 '</div>';
 
+            ui = ui.fill("category", base.categoryNameTracker);
             ui = $(ui);
             //endregion
 
@@ -851,15 +972,16 @@ $(function () {
                 var result = prompt("请将之前获得的文本粘贴进文本框");
 
                 if (!!result && parse(result)) {
-                    alert("导入成功");
+                    tooltip("导入成功", base.tooltipConfigOnSuccess);
                     save();
                 }
                 else if (result != null)
-                    alert("导入失败");
+                    tooltip("导入失败", base.tooltipConfigOnFail);
             });
 
             menuExportBtn.click(function () {
-                alert("请将下面这行复制并保留\n" + stringify())
+                GM_setClipboard(stringify(), "text");
+                tooltip("已将导出信息复制到剪贴板,请妥善保存", base.tooltipConfigDefault);
             });
 
             menuAddBtn.click(function () {
@@ -878,12 +1000,18 @@ $(function () {
                 var area = menuAddAreaInput.val();
                 var type = menuAddTypeSelect.val();
                 var keyword = menuAddKeywordInput.val();
-                if (area === "")
+                if (area === "") {
+                    tooltip("请填写分区(*为全部分区)", base.tooltipConfigOnFail);
                     alert("请填写分区(*为全部分区)");
-                else if (type === "spec")
+                }
+                else if (type === "spec") {
+                    tooltip("请选择一个类型", base.tooltipConfigOnFail);
                     alert("请选择一个类型");
-                else if (keyword === "")
+                }
+                else if (keyword === "") {
+                    tooltip("请选择一个类型", base.tooltipConfigOnFail);
                     alert("请填写关键字");
+                }
                 else {
                     var category = storage.list.where(function (i) {
                         if (area === "*")
@@ -907,9 +1035,9 @@ $(function () {
                         if (area === base.categoryNameTracker)
                             doFilter(area);
 
-                        alert("添加完成");
+                        tooltip("添加完成", base.tooltipConfigOnSuccess);
                     } else {
-                        alert("已经存在");
+                        tooltip("已经存在", base.tooltipConfigOnFail);
                     }
                 }
             });
@@ -927,6 +1055,8 @@ $(function () {
             var data = new List();
             data.push(["up", "Up主中存在"]);
             data.push(["up_r", "Up主中不存在"]);
+            data.push(["up_s", "Up主是"]);
+            data.push(["up_sr", "Up主不是"]);
             data.push(["title", "标题中存在"]);
             data.push(["title_r", "标题中不存在"]);
             data.push(["description", "描述中存在"]);
@@ -1037,9 +1167,9 @@ $(function () {
                                     category.items.remove(find, true);
                                     save();
                                     listRefresh(table);
-                                    alert("删除成功");
+                                    tooltip("删除成功", base.tooltipConfigOnSuccess);
                                 } else {
-                                    alert("删除失败");
+                                    tooltip("删除失败", base.tooltipConfigOnFail);
                                 }
                             }
                         }
