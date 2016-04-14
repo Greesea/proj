@@ -5,8 +5,10 @@
 // @include     http://tieba.baidu.com/*
 // @exclude     http://tieba.baidu.com/tb*
 // @exclude     http://tieba.baidu.com/bawu2*
-// @version     III Fix.I
-// @grant       none
+// @version     III Fix.II
+// @require     https://code.jquery.com/jquery-1.12.3.min.js
+// @grant       unsafeWindow
+// @grant       GM_setClipboard
 // @author      Greesea
 // ==/UserScript==
 
@@ -16,6 +18,7 @@
 //导出：_rbs.output();
 //导入：_rbs.load();
 //重置(不输入贴吧名则清空全部)：_rbs.reset(贴吧名);
+this.$ = this.jQuery = jQuery.noConflict(true);
 $(function () {
     //-----Config-----
     //设置内容请自行备份 每次更新都将重置(保存的封禁用户不会被重置 除非更换storageKey或typeName)
@@ -37,7 +40,7 @@ $(function () {
         info_repeatBan: "[{:name}] 循环 贴吧：{:tieba}\t用户：{:username} \t结果：{:result}\t{:resp}",//普通方式 循环Ban
         info_repeatComplete: "[{:name}] 循环 完成 成功率:{:rate}%",//普通方式 循环结束
         info_funcDisplayFmt: "贴吧:{:tieba}\t用户:{:username}",//普通方式 查询所有用户
-        info_outputHint: "请将下面这行复制并保留",//导出提示
+        info_outputHint: "已将导出信息复制到剪贴板,请妥善保存",//导出提示
         info_loadHint: "请将之前获得的文本粘贴进文本框",//导入提示
         info_loadSuccess: "导入成功",//导入成功
         info_loadFail: "导入失败",//导入失败
@@ -75,11 +78,11 @@ $(function () {
         banRequestUrl: "http://tieba.baidu.com/pmc/blockid",
         ie: "gbk",
         //Tracker
-        bawuTracker: window.PageData.is_posts_admin !== 0,
-        tiebaNameTracker: window.PageData.forum.forum_name,
-        tiebaIdTracker: window.PageData.forum.forum_id,
-        selfNameTracker: window.PageData.user.name,
-        tbsTracker: window.PageData.tbs
+        bawuTracker: unsafeWindow.PageData.is_posts_admin !== 0,
+        tiebaNameTracker: unsafeWindow.PageData.forum.forum_name,
+        tiebaIdTracker: unsafeWindow.PageData.forum.forum_id,
+        selfNameTracker: unsafeWindow.PageData.user.name,
+        tbsTracker: unsafeWindow.PageData.tbs
     };
 
     //-----Script-----
@@ -123,7 +126,7 @@ $(function () {
                 if (result > obj.max)
                     obj.max = result;
             } else {
-                log.t(["Types-List", ":", "Invalid function result."]);
+                throw new Error(["Types-List", ":", "Invalid function result."]);
             }
         }
 
@@ -262,7 +265,7 @@ $(function () {
 
         this["each"] = function (func) {
             if (typeof func !== "function")
-                log.t(["Types-List", ":", "Invalid function."]);
+                throw new Error(["Types-List", ":", "Invalid function."]);
 
             for (var i = 0; i < this.length; i++)
                 func(this[i]);
@@ -271,7 +274,7 @@ $(function () {
         //投影方法
         this["select"] = function (func) {
             if (typeof func !== "function")
-                log.t(["Types-List", ":", "Invalid function."]);
+                throw new Error(["Types-List", ":", "Invalid function."]);
 
             var newArr = new List();
             for (var i = 0; i < this.length; i++) {
@@ -285,7 +288,7 @@ $(function () {
         //筛选方法
         this["where"] = function (func) {
             if (typeof func !== "function")
-                log.t(["Types-List", ":", "Invalid function."]);
+                throw new Error(["Types-List", ":", "Invalid function."]);
 
             var newArr = new List();
             for (var i = 0; i < this.length; i++) {
@@ -294,7 +297,7 @@ $(function () {
                 if (!!result) {
                     newArr.push(this[i]);
                 } else if (result == null) {
-                    log.t(["Types-List", ":", "Invalid function result."]);
+                    throw new Error(["Types-List", ":", "Invalid function result."]);
                 }
             }
 
@@ -304,7 +307,7 @@ $(function () {
         //排序方法
         this["orderBy"] = function (func) {
             if (typeof func !== "function")
-                log.t(["Types-List", ":", "Invalid function."]);
+                throw new Error(["Types-List", ":", "Invalid function."]);
 
             var clone = this.clone();
             for (var i = 0; i < clone.length - 1; i++) {
@@ -316,7 +319,7 @@ $(function () {
                         clone[j] = clone[j + 1];
                         clone[j + 1] = temp;
                     } else if (result == null) {
-                        log.t(["Types-List", ":", "Invalid function result."]);
+                        throw new Error(["Types-List", ":", "Invalid function result."]);
                     }
                 }
             }
@@ -338,28 +341,28 @@ $(function () {
         //聚合方法
         this["sum"] = function (func) {
             if (typeof func !== "function")
-                log.t(["Types-List", ":", "Invalid function."]);
+                throw new Error(["Types-List", ":", "Invalid function."]);
 
             return listCalculate(this, func).sum;
         };
 
         this["avg"] = function (func) {
             if (typeof func !== "function")
-                log.t(["Types-List", ":", "Invalid function."]);
+                throw new Error(["Types-List", ":", "Invalid function."]);
 
             return listCalculate(this, func).avg;
         };
 
         this["min"] = function (func) {
             if (typeof func !== "function")
-                log.t(["Types-List", ":", "Invalid function."]);
+                throw new Error(["Types-List", ":", "Invalid function."]);
 
             return listCalculate(this, func).min;
         };
 
         this["max"] = function (func) {
             if (typeof func !== "function")
-                log.t(["Types-List", ":", "Invalid function."]);
+                throw new Error(["Types-List", ":", "Invalid function."]);
 
             return listCalculate(this, func).max;
         };
@@ -369,7 +372,7 @@ $(function () {
             if (this.length == 1)
                 return this[0];
             else if (this.length > 0)
-                log.t(["Types-List", ":", "Array contains more than one element."]);
+                throw new Error(["Types-List", ":", "Array contains more than one element."]);
             return null;
         };
 
@@ -667,18 +670,6 @@ $(function () {
         //endregion
 
         //region RepeatBan
-        storage.list.each(function (i) {
-            if (i.name === base.tiebaNameTracker)
-                if (!i.date) {
-                    i.date = getDate();
-                    save();
-                } else {
-                    var diff = dateDiff(new Date(), toDate(i.date));
-                    if (diff >= (base.banInterval - 1)) {
-                        Repeat(diff, i.name);
-                    }
-                }
-        });
 
         function Repeat(diff, tiebaName) {
             if (!tiebaName)
@@ -732,6 +723,19 @@ $(function () {
                 tieba.date = getDate();
                 save();
             }
+
+            storage.list.each(function (i) {
+                if (i.name === base.tiebaNameTracker)
+                    if (!i.date) {
+                        i.date = getDate();
+                        save();
+                    } else {
+                        var diff = dateDiff(new Date(), toDate(i.date));
+                        if (diff >= (base.banInterval - 1)) {
+                            Repeat(diff, i.name);
+                        }
+                    }
+            });
         }
 
         //endregion
@@ -750,7 +754,6 @@ $(function () {
                 var username = $(this).parent().parent().parent().parent().prev().find(".d_name").find("a").text();
                 var pid = $(this).parent().parent().parent().parent().parent().data("field").content.post_id;
 
-                //var index = storage.list.findByProp("name", base.tiebaNameTracker);
                 var index = storage.list.where(function (i) {
                     return i.name === base.tiebaNameTracker;
                 }).first();
@@ -842,7 +845,8 @@ $(function () {
                 });
 
                 outputLabel.click(function () {
-                    alert(lang.info_outputHint + "\n" + stringify());
+                    GM_setClipboard(stringify());
+                    tooltip(lang.info_outputHint, base.tooltipConfigDefault);
                 });
 
                 loadLabel.click(function () {
@@ -929,10 +933,14 @@ $(function () {
             },
             getStorage: function () {
                 return storage;
+            },
+            getBase: function () {
+                return base;
             }
         };
 
-        window._rbs = rbs;
+        unsafeWindow._rbs = rbs;
+        console.log("RepeatBanScript Initialize Complete");
 
         //endregion
     }
