@@ -1,0 +1,1106 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Synchronize Via P2P</title>
+
+    <style type="text/less">
+        @green: #38b03f;
+        @yellow: #f1a325;
+        @red: #ea644a;
+        @blue: #03b8cf;
+        @purple: #8666b8;
+        @gray: #808080;
+        @gray-light: #999999;
+        @gray-line: #333;
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #application {
+            display: flex;
+            height: 100%;
+            overflow: hidden;
+
+            .loading {
+                flex: 1;
+                align-self: center;
+                text-align: center;
+            }
+
+            .player {
+                flex: 1;
+
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                background: black;
+                overflow: hidden;
+            }
+
+            .connectivity {
+                flex-basis: 320px;
+
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+
+                &.disconnected {
+                    position: relative;
+                    align-items: center;
+                    justify-content: center;
+
+                    .applicationInfo {
+                        position: absolute;
+                        top: 16%;
+
+                        .name {
+                            font-size: 26px;
+                        }
+
+                        .version {
+                            font-size: 10px;
+                            color: @gray-light;
+                            text-align: right;
+                        }
+                    }
+
+                    .hintText {
+                        .peerId {
+                            font-size: 10px;
+                            color: @gray-light;
+                        }
+                    }
+
+                    .actions {
+                        display: flex;
+
+                        input {
+                            flex: 1;
+                        }
+
+                        button {
+                            flex-shrink: 0;
+                        }
+                    }
+                }
+
+                &.connecting {
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                &.connected {
+                    box-sizing: border-box;
+                    border-left: 1px solid @gray-line;
+
+                    .connectedUsers {
+                        flex-basis: 30%;
+
+                        display: flex;
+                        flex-direction: column;
+                        box-sizing: border-box;
+                        border-bottom: 1px solid @gray-line;
+                        overflow: auto;
+
+                        .userItem {
+                            flex-shrink: 0;
+
+                            font-size: 10px;
+                            display: flex;
+                            overflow: hidden;
+
+                            .name {
+                                flex: 1;
+
+                                color: @gray;
+                                white-space: nowrap;
+                                text-overflow: ellipsis;
+                            }
+
+                            .badge {
+                                margin-left: 8px;
+
+                                &.host {
+                                    color: @purple;
+                                }
+                            }
+                        }
+                    }
+
+                    .chatHistory {
+                        flex: 1;
+
+                        box-sizing: border-box;
+                        border-bottom: 1px solid @gray-line;
+                        overflow: auto;
+
+                        .messageItem {
+                            margin-bottom: 8px;
+                            overflow: hidden;
+
+                            .sender {
+                                display: flex;
+                                font-size: 10px;
+
+                                .name {
+                                    flex: 1;
+                                    overflow: hidden;
+                                    white-space: nowrap;
+                                    text-overflow: ellipsis;
+                                }
+
+                                .time {
+                                    margin-left: 8px;
+                                    flex-shrink: 0;
+                                }
+                            }
+
+                            .content {
+                                margin-left: 16px;
+                                white-space: pre-wrap;
+                                word-break: break-all;
+                            }
+                        }
+                    }
+
+                    .actions {
+                        flex-basis: 120px;
+
+                        display: flex;
+                        flex-direction: column;
+                        overflow: hidden;
+
+                        .buttons {
+                            white-space: nowrap;
+                            overflow: hidden;
+                        }
+
+                        .editor {
+                            flex: 1;
+
+                            display: flex;
+
+                            textarea {
+                                flex: 1;
+
+                                resize: none;
+                            }
+
+                            button {
+                                padding: 18px;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        .toast {
+            > .right {
+                left: unset;
+                right: 0;
+                align-self: flex-end;
+                margin-right: 8px;
+            }
+
+            > .small {
+                min-width: unset;
+                width: 160px;
+            }
+
+            > .medium {
+                min-width: unset;
+                width: 300px;
+            }
+
+            > .large {
+                min-width: unset;
+                width: 460px;
+            }
+
+            > .green {
+                background: @green;
+            }
+
+            > .yellow {
+                background: @yellow;
+            }
+
+            > .red {
+                background: @red;
+            }
+
+            > .blue {
+                background: @blue;
+            }
+
+            > .gray {
+                background: @gray;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="application"></div>
+
+<script crossorigin src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.16.4/babel.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/less@4.1.2/dist/less.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/gh/peers/peerjs@1.3.2/dist/peerjs.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/video.js@7.17.0/dist/video-js.min.css">
+<script crossorigin src="https://cdn.jsdelivr.net/npm/video.js@7.17.0/dist/video.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/video.js@7.17.0/dist/lang/zh-CN.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react@17.0.2/umd/react.development.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@17.0.2/umd/react-dom.development.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/@reduxjs/toolkit@1.6.2/dist/redux-toolkit.umd.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react-redux@7.2.6/dist/react-redux.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/toast-me@1.4.8/lib/toast-me.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/moment@2.29.1/locale/zh-cn.js"></script>
+<!--region react-file-picker-->
+<script>
+    window.react = React;
+</script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react-file-picker@0.0.6/lib/index.js"></script>
+<!--endregion-->
+
+<script type="text/babel">
+    const {useState, useEffect, useContext, useCallback, useRef} = React;
+    const {useSelector, useDispatch} = ReactRedux;
+    const PeerClientContext = React.createContext();
+    const {FilePicker} = window["react-file-picker"];
+
+    //region utils
+    const sequence = (function () {
+        return ++this.value;
+    }).bind({value: 0});
+    const isEmpty = value => value == null || value === "";
+    const className = function () {
+        let validItems;
+
+        if (arguments.length === 1 && Object.prototype.toString.call(arguments[0]) === "[object Object]")
+            validItems = _.map(_.filter(_.map(arguments[0], (value, key) => ({key, value})), item => item.value && className.filterRule(item.value)), "key");
+        else
+            validItems = _.filter(arguments, className.filterRule);
+
+        return _.uniq(validItems).join(" ");
+    };
+    className.filterRule = value => !isEmpty(value);
+    const toast = obj => window["toast-me"].default(obj.message, _.extend({}, toast.defaults, obj.options), obj.action);
+    toast.defaults = {containerClass: "toast", duration: 3000, type: "chain"};
+    //endregion
+    //region constants
+    const APPLICATION_NAME = "Synchronize Via P2P";
+    const VERSION = "1.0.0_dev";
+    const PlayerAction = {
+        PLAY: "play",
+        PAUSE: "pause",
+    };
+    const PlayerStateUpdateType = {
+        BROADCAST: "broadcast",
+        UPDATE: "update",
+    };
+    const ConnectionMode = {
+        HOST: "host",
+        CLIENT: "client",
+    };
+    const ConnectionStatus = {
+        DISCONNECTED: "disconnected",
+        CONNECTING: "connecting",
+        CONNECTED: "connected",
+    };
+    //endregion
+
+    //region player
+
+    //VideoJS SOURCE CODE FROM https://docs.videojs.com/tutorial-react.html
+    const VideoJS = (props) => {
+        const videoRef = React.useRef(null);
+        const playerRef = React.useRef(null);
+        const {options, onReady} = props;
+
+        React.useEffect(() => {
+            // make sure Video.js player is only initialized once
+            if (!playerRef.current) {
+                const videoElement = videoRef.current;
+                if (!videoElement) return;
+
+                const player = playerRef.current = videojs(videoElement, options, () => {
+                    console.log("player is ready");
+                    onReady && onReady(player);
+                });
+            } else {
+                // you can update player here [update player through props]
+                // const player = playerRef.current;
+                // player.autoplay(options.autoplay);
+                // player.src(options.sources);
+            }
+        }, [options, videoRef]);
+
+        // Dispose the Video.js player when the functional component unmounts
+        React.useEffect(() => {
+            const player = playerRef.current;
+
+            return () => {
+                if (player) {
+                    player.dispose();
+                    playerRef.current = null;
+                }
+            };
+        }, [playerRef]);
+
+        return (
+            <div data-vjs-player>
+                <video ref={videoRef} className="video-js vjs-big-play-centered"/>
+            </div>
+        );
+    }
+
+    const playerSlice = RTK.createSlice({
+        name: "player",
+        initialState: {
+            control: {
+                seek: 0,
+                action: null,
+                updateType: null,
+            },
+            triggerUpdateSeek: 0,
+
+            srcObject: null,
+        },
+        reducers: {
+            seekTo(state, action) {
+                state.control = action.payload;
+            },
+            updateSeek(state, action) {
+                state.control = {
+                    seek: action.payload,
+                    action: state.control.action,
+                    updateType: PlayerStateUpdateType.UPDATE,
+                };
+            },
+            updateAction(state, action) {
+                state.control = {
+                    seek: state.control.seek,
+                    action: action.payload,
+                    updateType: PlayerStateUpdateType.BROADCAST,
+                };
+            },
+            triggerUpdateSeek(state) {
+                state.triggerUpdateSeek = +new Date();
+            },
+
+            setSrcObject(state, action) {
+                if (state.srcObject?.src && state.srcObject.src !== action.payload?.src)
+                    URL.revokeObjectURL(state.srcObject.src);
+
+                state.srcObject = action.payload;
+            },
+        },
+    });
+
+    function Player() {
+        let dispatch = useDispatch();
+
+        let state = useSelector(state => state.player);
+        let stateRef = useRef(null);
+        stateRef.current = state;
+        let connectivityState = useSelector(state => state.connectivity);
+
+        const playerRef = React.useRef(null);
+        let videoJsOptions = {
+            controls: true,
+            responsive: true,
+            fill: true,
+            preload: true,
+        };
+        let handlePlayerReady = (player) => {
+            playerRef.current = player;
+            if (connectivityState.mode !== ConnectionMode.HOST)
+                return;
+
+            player.on("play", () => {
+                dispatch(playerSlice.actions.seekTo({
+                    seek: player.currentTime(),
+                    action: PlayerAction.PLAY,
+                    updateType: PlayerStateUpdateType.BROADCAST,
+                }));
+            });
+            player.on("pause", () => {
+                dispatch(playerSlice.actions.seekTo({
+                    seek: player.currentTime(),
+                    action: PlayerAction.PAUSE,
+                    updateType: PlayerStateUpdateType.BROADCAST,
+                }));
+            });
+        }
+
+        useEffect(() => {
+            if (connectivityState.mode !== ConnectionMode.CLIENT)
+                return;
+
+            playerRef.current?.currentTime(state.control.seek);
+            playerRef.current?.[state.control.action]?.();
+        }, [state.control]);
+        useEffect(() => {
+            dispatch(playerSlice.actions.updateSeek(playerRef.current?.currentTime()));
+        }, [state.triggerUpdateSeek]);
+        useEffect(() => {
+            playerRef.current?.src(state.srcObject);
+            playerRef.current?.load();
+        }, [state.srcObject]);
+
+        return (
+            <div className="player">
+                {connectivityState.status === ConnectionStatus.CONNECTED ? <VideoJS options={videoJsOptions} onReady={handlePlayerReady}/> : null}
+            </div>
+        )
+    }
+
+    //endregion
+
+    //region connectivity
+
+    class User {
+        sequence;
+        nickname;
+        isHost;
+        channel;
+
+        constructor(sequence, nickname, isHost, channel) {
+            this.sequence = sequence;
+            this.nickname = nickname;
+            this.isHost = isHost;
+            this.channel = channel;
+        }
+
+        send(command) {
+            if (this.isHost || !this.channel)
+                return;
+            this.channel.send(command);
+        }
+
+        serialize() {
+            return {
+                sequence: this.sequence,
+                nickname: this.nickname,
+                isHost: this.isHost,
+            };
+        }
+
+        static deserialize(source) {
+            return new User(source.sequence, source.nickname, source.isHost);
+        }
+    }
+
+    class Message {
+        timestamp;
+        senderSequence;
+        senderNickname;
+        content;
+
+        constructor(timestamp, senderSequence, senderNickname, content) {
+            this.timestamp = timestamp;
+            this.senderSequence = senderSequence;
+            this.senderNickname = senderNickname;
+            this.content = content;
+        }
+
+        serialize() {
+            return {
+                timestamp: this.timestamp,
+                senderSequence: this.senderSequence,
+                senderNickname: this.senderNickname,
+                content: this.content,
+            }
+        }
+
+        static deserialize(source) {
+            return new Message(source.timestamp, source.senderSequence, source.senderNickname, source.content);
+        }
+    }
+
+    const ConnectivityProtocol = {
+        types: {
+            host: {
+                pushActiveUsers: "pushActiveUsers",
+                player: {
+                    broadcastAction: "player.broadcastAction",
+                    broadcastSeekAndAction: "player.broadcastSeekAndAction",
+                },
+                im: {
+                    pushRecentMessages: "im.pushRecentMessages",
+                    broadcastNewMessages: "im.broadcastNewMessages",
+                },
+            },
+            client: {
+                im: {
+                    sendMessageToRoom: "im.sendMessageToRoom",
+                    changeNickname: "im.changeNickname",
+                },
+                player: {
+                    pullCurrentState: "player.pullCurrentState",
+                },
+            },
+        },
+
+        host: {
+            pushActiveUsers: (activeUsers) => ({
+                type: ConnectivityProtocol.types.host.pushActiveUsers,
+                data: _.map(activeUsers, user => user.serialize()),
+            }),
+            player: {
+                broadcastAction: (action) => ({
+                    type: ConnectivityProtocol.types.host.player.broadcastAction,
+                    data: action,
+                }),
+                broadcastSeekAndAction: (seek, action) => ({
+                    type: ConnectivityProtocol.types.host.player.broadcastSeekAndAction,
+                    data: {seek, action},
+                }),
+            },
+            im: {
+                pushRecentMessages: (messages) => ({
+                    type: ConnectivityProtocol.types.host.im.pushRecentMessages,
+                    data: _.map(messages, message => message.serialize()),
+                }),
+                broadcastNewMessages: (messages) => ({
+                    type: ConnectivityProtocol.types.host.im.broadcastNewMessages,
+                    data: _.map(messages, message => message.serialize()),
+                }),
+            },
+        },
+        client: {
+            im: {
+                sendMessageToRoom: (messageContent) => ({
+                    type: ConnectivityProtocol.types.client.im.sendMessageToRoom,
+                    data: messageContent,
+                }),
+                changeNickname: (newName) => ({
+                    type: ConnectivityProtocol.types.client.im.changeNickname,
+                    data: newName,
+                }),
+            },
+            player: {
+                pullCurrentState: () => ({
+                    type: ConnectivityProtocol.types.client.player.pullCurrentState,
+                }),
+            },
+        },
+    };
+    const connectivitySlice = RTK.createSlice({
+        name: "connectivity",
+        initialState: {
+            status: ConnectionStatus.DISCONNECTED,
+            mode: null,
+
+            users: [],
+            unSyncPlayerStateUsers: [],
+            messages: [],
+            unSyncMessages: [],
+            maximumMessageCount: 100,
+        },
+        reducers: {
+            updateModeAndStatus(state, action) {
+                state.status = action.payload.status;
+                state.mode = action.payload.mode;
+            },
+            updateStatus(state, action) {
+                state.status = action.payload;
+            },
+            updateMode(state, action) {
+                state.mode = action.payload;
+            },
+
+            updateUsers(state, action) {
+                state.users = action.payload;
+            },
+            appendUser(state, action) {
+                state.users = [...state.users, action.payload];
+            },
+            removeUser(state, action) {
+                state.users = state.users.filter(user => user.sequence !== action.payload);
+            },
+            changeUserNickname(state, action) {
+                let {userSequence, newName} = action.payload;
+                let user = state.users.find(user => user.sequence === userSequence);
+                if (!user)
+                    return;
+
+                user.nickname = newName;
+                state.users = [...state.users];
+            },
+
+            updateUnSyncPlayerStateUsers(state, action) {
+                state.unSyncPlayerStateUsers = action.payload;
+            },
+            appendUnSyncPlayerStateUser(state, action) {
+                state.unSyncPlayerStateUsers = [...state.unSyncPlayerStateUsers, action.payload];
+            },
+
+            updateMessages(state, action) {
+                state.messages = _.slice(action.payload, 0 - state.maximumMessageCount);
+                state.unSyncMessages = state.messages;
+            },
+            appendNewMessage(state, action) {
+                let {senderSequence, content} = action.payload;
+                let sender = state.users.find(user => user.sequence === senderSequence);
+                if (!sender)
+                    return;
+
+                if (state.messages.length >= state.maximumMessageCount)
+                    state.messages = _.slice(state.messages, 0 - state.maximumMessageCount - 1);
+                let newMessage = new Message(+new Date(), sender.sequence, sender.nickname, content);
+                state.messages = [...state.messages, newMessage];
+                state.unSyncMessages = [...state.unSyncMessages, newMessage];
+            },
+            appendMessages(state, action) {
+                if (state.messages.length >= state.maximumMessageCount)
+                    state.messages = _.slice(state.messages, 0 - state.maximumMessageCount - 1);
+                state.messages = [...state.messages, ...action.payload];
+                state.unSyncMessages = [...state.unSyncMessages, ...action.payload];
+            },
+            removeUnSyncMessages(state, action) {
+                let targetMessages = _.keyBy(action.payload, "timestamp");
+                state.unSyncMessages = state.unSyncMessages.filter(message => !targetMessages[message.timestamp]);
+            },
+        },
+    });
+
+    function Connectivity() {
+        let peer = useContext(PeerClientContext);
+        let dispatch = useDispatch();
+
+        let state = useSelector(state => state.connectivity);
+        let stateRef = useRef(null);
+        stateRef.current = state;
+        let playerState = useSelector(state => state.player);
+        let playerStateRef = useRef(null);
+        playerStateRef.current = playerState;
+
+        let UI = {
+            chatHistoryScrollDummy: useRef(null),
+        };
+
+        let form = (() => {
+            let [targetId, setTargetId] = useState("");
+            let [messageContent, setMessageContent] = useState("");
+
+            return {
+                targetId, setTargetId,
+                messageContent, setMessageContent,
+            };
+        })();
+        let hostMode = (() => {
+            let broadcast = command => state.users.forEach(user => user.send(command));
+            let sendTo = (target, command) => state.users.find(user => user.sequence === target)?.send(command);
+
+            useEffect(() => {
+                if (state.mode !== ConnectionMode.HOST)
+                    return;
+                broadcast(ConnectivityProtocol.host.pushActiveUsers(state.users));
+            }, [state.users]);
+            useEffect(() => {
+                if (state.mode !== ConnectionMode.HOST || !state.unSyncMessages.length)
+                    return;
+
+                broadcast(ConnectivityProtocol.host.im.broadcastNewMessages(state.unSyncMessages));
+                dispatch(connectivitySlice.actions.removeUnSyncMessages(state.unSyncMessages));
+            }, [state.unSyncMessages.length]);
+
+            return {
+                listen(peerInstance) {
+                    dispatch(connectivitySlice.actions.updateUsers([new User(sequence(), peer.instance.id, true)]));
+                    peerInstance.on("connection", channel => {
+                        channel.on("open", () => {
+                            let userSequence = sequence();
+                            dispatch(connectivitySlice.actions.appendUser(new User(userSequence, channel.peer, false, channel)));
+                            channel.send(ConnectivityProtocol.host.im.pushRecentMessages(stateRef.current.messages));
+
+                            channel.on("data", command => {
+                                console.log(command);
+
+                                switch (command?.type) {
+                                    case ConnectivityProtocol.types.client.player.pullCurrentState:
+                                        dispatch(connectivitySlice.actions.appendUnSyncPlayerStateUser(userSequence));
+                                        dispatch(playerSlice.actions.triggerUpdateSeek());
+                                        break;
+                                    case ConnectivityProtocol.types.client.im.sendMessageToRoom:
+                                        dispatch(connectivitySlice.actions.appendNewMessage({senderSequence: userSequence, content: command.data}));
+                                        break;
+                                    case ConnectivityProtocol.types.client.im.changeNickname:
+                                        dispatch(connectivitySlice.actions.changeUserNickname({userSequence, newName: command.data}));
+                                        break;
+
+                                    default:
+                                        break;
+                                }
+                            });
+                            channel.on("close", () => dispatch(connectivitySlice.actions.removeUser(userSequence)));
+                            channel.on("error", error => {
+                                console.warn(error);
+                                toast({message: error.message, options: {toastClass: "yellow large right"}})
+                            });
+                        });
+                    });
+                },
+                sendTo,
+                broadcast,
+            };
+        })();
+        let hostModeRef = useRef(null);
+        hostModeRef.current = hostMode;
+
+        let clientMode = (() => {
+            let [channel, setChannel] = useState(null);
+
+            return {
+                channel,
+                established(channel) {
+                    setChannel(channel);
+                    channel.on("data", command => {
+                        console.log(command);
+
+                        switch (command?.type) {
+                            case ConnectivityProtocol.types.host.pushActiveUsers:
+                                dispatch(connectivitySlice.actions.updateUsers(_.map(command.data, User.deserialize)));
+                                break;
+                            case ConnectivityProtocol.types.host.player.broadcastAction:
+                                dispatch(playerSlice.actions.updateAction(command.data));
+                                break;
+                            case ConnectivityProtocol.types.host.player.broadcastSeekAndAction:
+                                dispatch(playerSlice.actions.seekTo(command.data))
+                                break;
+                            case ConnectivityProtocol.types.host.im.pushRecentMessages:
+                                dispatch(connectivitySlice.actions.updateMessages(_.map(command.data, Message.deserialize)));
+                                break;
+                            case ConnectivityProtocol.types.host.im.broadcastNewMessages:
+                                dispatch(connectivitySlice.actions.appendMessages(_.map(command.data, Message.deserialize)));
+                                break;
+
+                            default:
+                                break;
+                        }
+                    });
+                    channel.on("close", () => {
+                        toast({message: "与主机的连接已断开", options: {toastClass: "yellow medium right"}});
+                        dispatch(connectivitySlice.actions.updateModeAndStatus({
+                            status: ConnectionStatus.DISCONNECTED,
+                            mode: null,
+                        }));
+                        dispatch(connectivitySlice.actions.updateUsers([]));
+                        dispatch(connectivitySlice.actions.updateMessages([]));
+                    })
+                    channel.on("error", error => {
+                        console.warn(error);
+                        toast({message: error.message, options: {toastClass: "yellow large right"}})
+                    });
+                },
+                send(data) {
+                    channel.send(data);
+                },
+            };
+        })();
+        let clientModeRef = useRef(null);
+        clientModeRef.current = clientMode;
+
+        let eventHandlers = {
+            disconnected: {
+                joinButtonEventHandler: () => {
+                    if (!peer.initialized)
+                        return;
+
+                    if (isEmpty(form.targetId)) {
+                        toast({message: "请输入目标节点ID", options: {toastClass: "small yellow right"}});
+                        return;
+                    }
+                    if (form.targetId === peer.instance.id) {
+                        toast({message: "无法连接自己", options: {toastClass: "small yellow right"}});
+                        return;
+                    }
+
+                    dispatch(connectivitySlice.actions.updateModeAndStatus({
+                        status: ConnectionStatus.CONNECTING,
+                        mode: ConnectionMode.CLIENT,
+                    }));
+                    let channel = peer.instance.connect(form.targetId);
+                    channel.on("open", () => {
+                        dispatch(connectivitySlice.actions.updateStatus(ConnectionStatus.CONNECTED));
+                        clientMode.established(channel);
+                    });
+                },
+                hostButtonEventHandler: () => {
+                    dispatch(connectivitySlice.actions.updateModeAndStatus({
+                        status: ConnectionStatus.CONNECTED,
+                        mode: ConnectionMode.HOST,
+                    }));
+                    hostMode.listen(peer.instance);
+                },
+            },
+            connected: {
+                changeNicknameButtonEventHandler: () => {
+                    let newName = prompt("新昵称？");
+                    if (isEmpty(newName))
+                        return;
+
+                    switch (state.mode) {
+                        case ConnectionMode.HOST:
+                            dispatch(connectivitySlice.actions.changeUserNickname({userSequence: state.users.find(user => user.isHost)?.sequence, newName,}));
+                            break;
+                        case ConnectionMode.CLIENT:
+                            clientMode.send(ConnectivityProtocol.client.im.changeNickname(newName));
+                            break;
+                    }
+                },
+                syncPlayerButtonEventHandler: () => {
+                    clientMode.send(ConnectivityProtocol.client.player.pullCurrentState());
+                },
+                disconnectButtonEventHandler: () => {
+                    clientMode.channel.close();
+                },
+                sendButtonEventHandler: () => {
+                    if (isEmpty(form.messageContent))
+                        return;
+
+                    switch (state.mode) {
+                        case ConnectionMode.HOST:
+                            dispatch(connectivitySlice.actions.appendNewMessage({senderSequence: state.users.find(user => user.isHost)?.sequence, content: form.messageContent}));
+                            break;
+                        case ConnectionMode.CLIENT:
+                            clientMode.send(ConnectivityProtocol.client.im.sendMessageToRoom(form.messageContent));
+                            break;
+                    }
+                    form.setMessageContent("");
+                },
+                messageContentTextareaKeyboardEventHandler: event => {
+                    if (event.charCode !== 13)//Enter NumpadEnter
+                        return;
+
+                    event.preventDefault();
+                    if (event.shiftKey || event.ctrlKey || event.metaKey) {
+                        form.setMessageContent(form.messageContent + "\n");
+                        return;
+                    }
+                    eventHandlers.connected.sendButtonEventHandler();
+                },
+
+                selectMediaButtonEventHandler: file => {
+                    dispatch(playerSlice.actions.setSrcObject({
+                        src: URL.createObjectURL(file),
+                        type: file.type
+                    }));
+
+                    switch (state.mode) {
+                        case ConnectionMode.HOST:
+                            hostMode.broadcast(ConnectivityProtocol.host.player.broadcastAction(PlayerAction.PAUSE));
+                            break;
+                        case ConnectionMode.CLIENT:
+                            clientMode.send(ConnectivityProtocol.client.player.pullCurrentState());
+                            break;
+                    }
+                },
+            },
+        };
+        useEffect(() => {
+            switch (playerState.control.updateType) {
+                case PlayerStateUpdateType.BROADCAST:
+                    hostMode.broadcast(ConnectivityProtocol.host.player.broadcastSeekAndAction(playerState.control.seek, playerState.control.action));
+                    break;
+                case PlayerStateUpdateType.UPDATE:
+                    let command = ConnectivityProtocol.host.player.broadcastSeekAndAction(playerState.control.seek, playerState.control.action);
+                    state.unSyncPlayerStateUsers.forEach(sequence => hostMode.sendTo(sequence, command));
+                    dispatch(connectivitySlice.actions.updateUnSyncPlayerStateUsers([]));
+                    break;
+            }
+        }, [playerState.control]);
+
+        let renderContent;
+        switch (state.status) {
+            case ConnectionStatus.DISCONNECTED:
+                renderContent = (
+                    <>
+                        <h1 className="applicationInfo">
+                            <span className="name">{APPLICATION_NAME}</span>
+                            <div className="version">{VERSION ? "v" : ""}{VERSION}</div>
+                        </h1>
+                        <div className="hintText">
+                            <div>当前节点ID：</div>
+                            <div className="peerId">{peer?.instance?.id}</div>
+                        </div>
+                        <br/>
+                        <div className="actions">
+                            <input type="text" placeholder="目标节点ID" value={form.targetId} onChange={e => form.setTargetId(e.target.value)}/>
+                            <button onClick={eventHandlers.disconnected.joinButtonEventHandler}>连接</button>
+                            <button onClick={eventHandlers.disconnected.hostButtonEventHandler}>建立房间</button>
+                        </div>
+                    </>
+                );
+                break;
+            case ConnectionStatus.CONNECTING:
+                renderContent = (
+                    <>
+                        <div>正在连接...</div>
+                    </>
+                );
+                break;
+            case ConnectionStatus.CONNECTED:
+                renderContent = (
+                    <>
+                        <div className="connectedUsers">
+                            {state.users.map(user => (
+                                <div className="userItem" key={user.sequence}>
+                                    <span className="name">{user.nickname}</span>
+                                    {user.isHost ? <span className="badge host">[HOST]</span> : null}
+                                </div>
+                            ))}
+                        </div>
+                        <div className="chatHistory">
+                            {state.messages.map(message => (
+                                <div className="messageItem" key={message.timestamp}>
+                                    <div className="sender">
+                                        <div className="name">{message.senderNickname}</div>
+                                        <div className="time">{moment(message.timestamp).format("YYYY-MM-DD HH:mm:ss")}</div>
+                                    </div>
+                                    <div className="content">{message.content}</div>
+                                </div>
+                            ))}
+                            <div ref={UI.chatHistoryScrollDummy}/>
+                        </div>
+                        <div className="actions">
+                            <div className="buttons">
+                                <button onClick={eventHandlers.connected.changeNicknameButtonEventHandler}>修改昵称</button>
+                                <FilePicker
+                                    maxSize={99999}
+                                    style={{display: "inline-block"}}
+                                    onChange={file => eventHandlers.connected.selectMediaButtonEventHandler(file)}
+                                    onError={error => toast({message: error, options: {toastClass: "yellow large right"}})}
+                                >
+                                    <button>选择媒体</button>
+                                </FilePicker>
+                                {state.mode === ConnectionMode.CLIENT ? <button onClick={eventHandlers.connected.syncPlayerButtonEventHandler}>重新同步</button> : null}
+                                {state.mode === ConnectionMode.CLIENT ? <button onClick={eventHandlers.connected.disconnectButtonEventHandler}>断开连接</button> : null}
+                            </div>
+                            <div className="editor">
+                                <textarea value={form.messageContent} onInput={e => form.setMessageContent(e.target.value)} onKeyPress={eventHandlers.connected.messageContentTextareaKeyboardEventHandler}/>
+                                <button onClick={eventHandlers.connected.sendButtonEventHandler}>发送</button>
+                            </div>
+                        </div>
+                    </>
+                );
+                break;
+        }
+        useEffect(() => {
+            UI.chatHistoryScrollDummy.current?.scrollIntoView({behavior: "smooth"});
+        });
+
+        return (
+            <div
+                className={className({
+                    "connectivity": true,
+                    "disconnected": state.status === ConnectionStatus.DISCONNECTED,
+                    "connecting": state.status === ConnectionStatus.CONNECTING,
+                    "connected": state.status === ConnectionStatus.CONNECTED,
+                })}
+            >
+                {renderContent}
+            </div>
+        )
+    }
+
+    //endregion
+
+    //region initialize
+    function Application() {
+        let [initTrigger] = useState(0);
+        let [peer, setPeer] = useState({instance: null, initialized: false});
+        let dispatch = useDispatch();
+
+        useEffect(() => {
+            let peer = new peerjs.Peer()
+            peer.on("open", id => {
+                setPeer({
+                    instance: peer,
+                    initialized: true,
+                });
+            });
+            peer.on("error", error => {
+                switch (error?.type) {
+                    case "browser-incompatible":
+                    case "invalid-id":
+                    case "invalid-key":
+                    case "ssl-unavailable":
+                    case "server-error":
+                    case "socket-error":
+                    case "socket-closed":
+                    case "unavailable-id":
+                    default:
+                        toast({message: `fatal error: ${error.type ?? "unknown"}`, options: {toastClass: "red medium right"}});
+                        break;
+
+                    case "webrtc":
+                        toast({message: `webrtc error: ${error.type ?? "unknown"}`, options: {toastClass: "yellow medium right"}});
+                        break;
+                    case "peer-unavailable":
+                        toast({message: `无法连接到目标`, options: {toastClass: "yellow medium right"}});
+                        break;
+                    case "disconnected":
+                    case "network":
+                        toast({message: `与服务器断开连接`, options: {toastClass: "yellow medium right"}});
+                        break;
+                }
+            });
+        }, [initTrigger]);
+
+        return (
+            <>
+                <PeerClientContext.Provider value={peer}>
+                    {
+                        peer.initialized ?
+                            <>
+                                <Player/>
+                                <Connectivity/>
+                            </> :
+                            <>
+                                <div className="loading">正在初始化WebRTC...</div>
+                            </>
+                    }
+                </PeerClientContext.Provider>
+            </>
+        )
+    }
+
+    ReactDOM.render(
+        (
+            <ReactRedux.Provider store={RTK.configureStore({
+                reducer: RTK.combineReducers(_.mapValues(_.keyBy([
+                    playerSlice,
+                    connectivitySlice,
+                ], "name"), "reducer")),
+                middleware: (getDefaultMiddleware) => getDefaultMiddleware({
+                    serializableCheck: {
+                        ignoredActions: [
+                            "connectivity/updateUsers", "connectivity/appendUser", "connectivity/removeUser", "connectivity/changeUserNickname",
+                            "connectivity/updateMessages", "connectivity/appendNewMessage", "connectivity/appendMessages", "connectivity/removeUnSyncMessages",
+                        ],
+                        ignoredPaths: ["connectivity.users", "connectivity.messages", "connectivity.unSyncMessages"],
+                    },
+                }),
+            })}>
+                <Application/>
+            </ReactRedux.Provider>
+        ),
+        document.querySelector("#application")
+    );
+    document.title = `${APPLICATION_NAME} ${VERSION ? "v" : ""}${VERSION}`;
+    //endregion
+</script>
+</body>
+</html>
