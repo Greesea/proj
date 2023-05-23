@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>danmaku2ass</title>
+
+    <style type="text/less">
+        @green: #38b03f;
+        @yellow: #f1a325;
+        @red: #ea644a;
+        @blue: #03b8cf;
+        @purple: #8666b8;
+        @gray: #808080;
+        @gray-light: #999999;
+        @gray-line: #333;
+
+        //region normalize
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        //endregion
+
+        //region toolkits
+        .width-100p {
+            width: 100%;
+        }
+
+        .height-100p {
+            height: 100%;
+        }
+
+        .flex {
+            display: flex;
+        }
+
+        .flex-direction-column {
+            flex-direction: column;
+        }
+
+        .flex-1 {
+            flex: 1;
+        }
+
+        .overflow-hidden {
+            overflow: hidden;
+        }
+
+        .overflow-auto {
+            overflow: auto;
+        }
+
+        .overflow-x-auto {
+            overflow-x: auto;
+        }
+
+        .overflow-y-auto {
+            overflow-y: auto;
+        }
+
+        .overflow-ios-smooth {
+            -webkit-overflow-scrolling: touch;
+        }
+
+        //endregion
+
+        #application {
+            display: flex;
+            height: 100%;
+            overflow: hidden;
+
+            .player {
+                flex: 1;
+
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                background: black;
+                overflow: hidden;
+                border: 1px solid @gray-line;
+            }
+
+            .danmaku {
+                width: 30vw;
+
+                display: flex;
+                flex-direction: column;
+
+                margin-top: 8px;
+                margin-left: 8px;
+                margin-right: 8px;
+
+                .toolbar {
+                    display: flex;
+                }
+
+                .list {
+                    flex: 1;
+
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
+
+                    margin-top: 8px;
+                    margin-bottom: 8px;
+
+                    .header {
+                        border-bottom: 1px solid @gray-line;
+                        padding-bottom: 4px;
+                        margin-bottom: 4px;
+                        margin-right: 17px; // scrollbar
+                    }
+
+                    .row {
+                        display: flex;
+                        overflow: hidden;
+                        font-size: 12px;
+
+                        .checkbox {
+                            width: 32px;
+                        }
+
+                        .timestamp {
+                            width: 80px;
+                        }
+
+                        .content {
+                            flex: 1;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                        }
+
+                        .user {
+                            width: 120px;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                        }
+                    }
+
+                    .data {
+                        flex: 1;
+                        overflow: auto;
+
+                        .timestamp {
+                            cursor: pointer;
+                            color: @blue;
+                            text-decoration: underline;
+                        }
+                    }
+                }
+            }
+
+            .controller {
+                display: flex;
+                flex-direction: column;
+                height: 20vh;
+                overflow: hidden;
+
+                margin-top: 8px;
+                margin-left: 8px;
+
+                .buttons {
+                    display: flex;
+
+                    .left {
+                        flex: 1;
+
+                        > * {
+                            margin-right: 8px;
+                        }
+                    }
+                }
+
+                .info {
+                    flex: 1;
+
+                    display: flex;
+                    overflow: auto;
+                    -webkit-overflow-scrolling: touch;
+
+                    margin-top: 8px;
+
+                    > div {
+                        flex: 1;
+                    }
+
+                    .indent {
+                        margin-left: 2em;
+                    }
+
+                    button.selected {
+                        color: @green;
+                    }
+                }
+            }
+        }
+
+        .toast {
+            > .right {
+                left: unset;
+                right: 0;
+                align-self: flex-end;
+                margin-right: 8px;
+            }
+
+            > .small {
+                min-width: unset;
+                width: 160px;
+            }
+
+            > .medium {
+                min-width: unset;
+                width: 300px;
+            }
+
+            > .large {
+                min-width: unset;
+                width: 460px;
+            }
+
+            > .green {
+                background: @green;
+            }
+
+            > .yellow {
+                background: @yellow;
+            }
+
+            > .red {
+                background: @red;
+            }
+
+            > .blue {
+                background: @blue;
+            }
+
+            > .gray {
+                background: @gray;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="application"></div>
+
+<script crossorigin src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.16.4/babel.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/less@4.1.2/dist/less.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/video.js@7.17.0/dist/video-js.min.css">
+<script crossorigin src="https://cdn.jsdelivr.net/npm/video.js@7.17.0/dist/video.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/video.js@7.17.0/dist/lang/zh-CN.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react@17.0.2/umd/react.development.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@17.0.2/umd/react-dom.development.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/@reduxjs/toolkit@1.6.2/dist/redux-toolkit.umd.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react-redux@7.2.6/dist/react-redux.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/toast-me@1.4.8/lib/toast-me.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/moment@2.29.1/locale/zh-cn.js"></script>
+<script crossorigin src="./libs/libass/subtitles-octopus.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/ass-compiler@0.1.8/dist/ass-compiler.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<!--region react-file-picker-->
+<script>
+    window.react = React;
+</script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react-file-picker@0.0.6/lib/index.js"></script>
+<!--endregion-->
+
+<script type="text/babel">
+    const {useState, useEffect, useContext, useCallback, useRef, useMemo, useImperativeHandle, createContext, forwardRef} = React;
+    const {useSelector, useDispatch} = ReactRedux;
+    const {FilePicker} = window["react-file-picker"];
+    const {parse, stringify} = assCompiler;
+
+    //region utils
+    const sequence = (function () {
+        return ++this.value;
+    }).bind({value: 0});
+    const isEmpty = value => value == null || value === "";
+    const toast = obj => window["toast-me"].default(obj.message, _.extend({}, toast.defaults, obj.options), obj.action);
+    toast.defaults = {containerClass: "toast", duration: 3000, type: "chain"};
+    const readFileAsText = file => new Promise(resolve => {
+        const reader = new FileReader();
+        reader.addEventListener("load", () => resolve(reader.result));
+        reader.readAsText(file);
+    });
+    //endregion
+    //region constants
+    const APPLICATION_NAME = "danmaku2ass";
+    const VERSION = "1.0.0_dev";
+    //endregion
+
+    //region player
+
+    //VideoJS SOURCE CODE FROM https://docs.videojs.com/tutorial-react.html
+    const VideoJS = (props) => {
+        const videoRef = React.useRef(null);
+        const playerRef = React.useRef(null);
+        const {options, onReady} = props;
+
+        React.useEffect(() => {
+            // make sure Video.js player is only initialized once
+            if (!playerRef.current) {
+                const videoElement = videoRef.current;
+                if (!videoElement) return;
+
+                const player = playerRef.current = videojs(videoElement, options, () => {
+                    console.log("player is ready");
+                    onReady && onReady(player, videoRef.current);
+                });
+            } else {
+                // you can update player here [update player through props]
+                // const player = playerRef.current;
+                // player.autoplay(options.autoplay);
+                // player.src(options.sources);
+            }
+        }, [options, videoRef]);
+
+        // Dispose the Video.js player when the functional component unmounts
+        React.useEffect(() => {
+            const player = playerRef.current;
+
+            return () => {
+                if (player) {
+                    player.dispose();
+                    playerRef.current = null;
+                }
+            };
+        }, [playerRef]);
+
+        return (
+            <div data-vjs-player>
+                <video ref={videoRef} className="video-js vjs-big-play-centered"/>
+            </div>
+        );
+    }
+
+    const playerSlice = RTK.createSlice({
+        name: "player",
+        initialState: {
+            control: {
+                seek: 0,
+            },
+            offset: "",
+            videoInfo: null,
+            srcObject: null,
+        },
+        reducers: {
+            seekTo(state, action) {
+                state.control = {
+                    seek: _.round((action.payload ?? 0) + _.toFinite(state.offset), 3),
+                };
+            },
+            setVideoInfo(state, action) {
+                state.videoInfo = action.payload;
+            },
+            setOffset(state, action) {
+                state.offset = action.payload;
+            },
+            setSrcObject(state, action) {
+                if (state.srcObject?.src && state.srcObject.src !== action.payload?.src)
+                    URL.revokeObjectURL(state.srcObject.src);
+
+                state.srcObject = action.payload;
+            },
+        },
+    });
+
+    function Player() {
+        const dispatch = useDispatch();
+        const state = useSelector(state => state.player);
+        const controllerState = useSelector(state => state.controller);
+
+        const playerRef = useRef(null);
+        const videoRef = useRef(null);
+        const assRef = useRef(null);
+        const handlePlayerReady = (player, video) => {
+            playerRef.current = player;
+            videoRef.current = video;
+            assRef.current = new SubtitlesOctopus({
+                video,
+                workerUrl: "./libs/libass/subtitles-octopus-worker.js",
+                legacyWorkerUrl: "./libs/libass/subtitles-octopus-worker-legacy.js",
+                fonts: [
+                    "../../fonts/SourceHanSansCN-Bold.otf",
+                    "../../fonts/SourceHanSansCN-ExtraLight.otf",
+                    "../../fonts/SourceHanSansCN-Light.otf",
+                    "../../fonts/SourceHanSansCN-Medium.otf",
+                    "../../fonts/SourceHanSansCN-Normal.otf",
+                    "../../fonts/SourceHanSansCN-Regular.otf",
+                    "../../fonts/SourceHanSansSC-Bold.otf",
+                    "../../fonts/SourceHanSansSC-ExtraLight.otf",
+                    "../../fonts/SourceHanSansSC-Heavy.otf",
+                    "../../fonts/SourceHanSansSC-Light.otf",
+                    "../../fonts/SourceHanSansSC-Medium.otf",
+                    "../../fonts/SourceHanSansSC-Normal.otf",
+                    "../../fonts/SourceHanSansSC-Regular.otf",
+                    "../../fonts/思源黑体 CN Heavy.otf",
+                ],
+                subContent: `
+                    [Script Info]
+                    Title: Default Aegisub file
+                    ScriptType: v4.00+
+                    WrapStyle: 0
+                    ScaledBorderAndShadow: yes
+                    YCbCr Matrix: None
+
+                    [V4+ Styles]
+                    Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+                    Style: Default,Arial,20,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,2,2,10,10,10,1
+
+                    [Events]
+                    Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+                    Dialogue: 0,0:00:00.00,0:00:05.00,Default,,0,0,0,,
+                `,
+            });
+            assRef.current.freeTrack();
+
+            player.on("loadedmetadata", () => {
+                dispatch(playerSlice.actions.setVideoInfo({
+                    width: player.videoWidth(),
+                    height: player.videoHeight(),
+                    duration: player.duration(),
+                }));
+            });
+            player.on("error", () => {
+                dispatch(playerSlice.actions.setVideoInfo(null));
+            });
+        };
+        const videoJsOptions = {
+            controls: true,
+            responsive: true,
+            fill: true,
+            preload: true,
+        };
+        useEffect(() => {
+            playerRef.current?.currentTime(state.control.seek);
+        }, [state.control]);
+        useEffect(() => {
+            playerRef.current?.pause();
+            playerRef.current?.currentTime(0);
+            playerRef.current?.src(state.srcObject);
+            playerRef.current?.load();
+        }, [state.srcObject]);
+        useEffect(() => {
+            if (!controllerState.resultASS)
+                return;
+            assRef.current.setTrack(controllerState.resultASS);
+        }, [controllerState.resultASS]);
+
+        return (
+            <div className="player">
+                <VideoJS options={videoJsOptions} onReady={handlePlayerReady}/>
+            </div>
+        )
+    }
+
+    //endregion
+
+    //region danmaku
+    const danmakuParser = (() => {
+        const MIME = {
+            json: "application/json",
+            xml: "text/xml",
+        };
+        const parserList = [
+            {
+                name: "DANMAKUS",
+                tryParse(fileContent, file) {
+                    if (file.type !== MIME.json)
+                        return;
+                    let obj;
+                    try {
+                        obj = JSON.parse(fileContent);
+                    } catch {
+                    }
+                    if (!obj || !obj.danmakus || !obj.live || !obj.channel)
+                        return;
+
+                    const startTime = obj.live.startDate;
+                    return {
+                        info: {
+                            title: obj.live.title,
+                            channel: obj.channel.uName,
+                        },
+                        list: (obj.danmakus ?? []).map((item, index) => {
+                            if (item.type !== 0 || (item.message ?? "").startsWith("[")) // 0 === danmaku
+                                return;
+                            return {
+                                id: index,
+                                user: item.uName,
+                                content: item.message,
+                                timestamp: item.sendDate - startTime,
+                            };
+                        }).filter(i => i),
+                    };
+                },
+            },
+            // {
+            //     name: "BililiveRecorder",
+            //     tryParse(fileContent, type) {
+            //         // TODO not support yet
+            //     },
+            // },
+        ];
+
+        return (fileContent, file) => parserList.reduce((result, parser) => result ?? parser.tryParse(fileContent, file), null);
+    })();
+
+    const DanmakuSearchTargets = {
+        content: {
+            value: "content",
+            text: "内容",
+        },
+        user: {
+            value: "user",
+            text: "用户",
+        },
+    };
+    const danmakuSlice = RTK.createSlice({
+        name: "danmaku",
+        initialState: {
+            searchTarget: DanmakuSearchTargets.content.value,
+            searchKeywords: "",
+            inputKeywords: {value: ""},
+            selected: null,
+            liveInfo: null,
+            danmakuList: null,
+            danmakuSummary: null,
+        },
+        reducers: {
+            setSearchTarget(state, action) {
+                state.searchTarget = action.payload;
+            },
+            setSearchKeywords(state, action) {
+                state.searchKeywords = action.payload;
+            },
+            setInputKeywords(state, action) {
+                state.inputKeywords = action.payload;
+            },
+            setDanmaku(state, action) {
+                state.liveInfo = action.payload?.info;
+                state.danmakuList = action.payload?.list ?? [];
+                state.selected = [];
+            },
+            setDanmakuSummary(state, action) {
+                state.danmakuSummary = action.payload;
+            },
+            select(state, action) {
+                state.selected = [...state.selected, ...(action.payload ?? [])];
+            },
+            unselect(state, action) {
+                const targets = (action.payload ?? []).reduce((obj, i) => (obj[i] = true, obj), {});
+                state.selected = state.selected.filter(i => !targets[i]);
+            },
+        }
+    });
+
+    function Danmaku() {
+        const dispatch = useDispatch();
+        const state = useSelector(state => state.danmaku);
+
+        const renderList = useMemo(
+            () => (state.danmakuList ?? []).map(i => ({
+                ...i,
+                timestamp: moment(i.timestamp).utc().format("HH:mm:ss"),
+            })),
+            [state.danmakuList, state.selected],
+        );
+        const visibleList = useMemo(
+            () => {
+                const keywords = state.searchKeywords ?? "";
+                if (!keywords.length)
+                    return renderList;
+
+                const regexString = keywords.match(/(?<=\/).+(?=\/)/g)?.[0];
+                const matcher = regexString ?
+                    (() => {
+                        const regex = new RegExp(regexString);
+                        return item => regex.test(item[state.searchTarget] ?? "");
+                    })() :
+                    item => (item[state.searchTarget] ?? "").includes(keywords);
+                return (renderList ?? []).filter(matcher);
+            },
+            [renderList, state.searchKeywords, state.searchTarget],
+        );
+        const selected = useMemo(
+            () => {
+                const selected = (state.selected ?? []).reduce((obj, i) => (obj[i] = true, obj), {});
+                return (state.danmakuList ?? []).reduce((obj, i) => (obj[i.id] = !!selected[i.id], obj), {});
+            },
+            [state.selected],
+        );
+
+        useEffect(() => {
+            if (state.danmakuList) {
+                dispatch(danmakuSlice.actions.setDanmakuSummary({
+                    liveInfo: state.liveInfo,
+                    total: state.danmakuList?.length ?? 0,
+                    selected: state.selected?.length,
+                }));
+            }
+        }, [state.danmakuList, state.selected]);
+        useEffect(
+            _.debounce(() => {
+                if (state.inputKeywords?.fromEvent)
+                    dispatch(danmakuSlice.actions.setSearchKeywords(state.inputKeywords?.value));
+            }, 300, {leading: true, trailing: false}),
+            [state.inputKeywords],
+        );
+
+        const eventHandlers = {
+            searchTargetChange: ({target: {value}}) => {
+                dispatch(danmakuSlice.actions.setSearchTarget(value));
+            },
+            keywordsInput: ({target: {value}}) => {
+                dispatch(danmakuSlice.actions.setInputKeywords({
+                    value,
+                    fromEvent: true,
+                }));
+            },
+            filterToTranslateFuzzyClick: () => {
+                const regexString = "/^(.+[:：])?\\s{0,5}((【.+】?)|(\\(.+\\)?)|(（.+）?)|(\\[.+\\]?)|(「.+」?))$/";
+                dispatch(danmakuSlice.actions.setSearchTarget(DanmakuSearchTargets.content.value));
+                dispatch(danmakuSlice.actions.setInputKeywords({value: regexString}));
+                dispatch(danmakuSlice.actions.setSearchKeywords(regexString));
+            },
+            filterToTranslateStrictClick: () => {
+                const regexString = "/^(.+[:：])?\\s{0,5}((【.+】)|(\\[.+\\])|(「.+」))$/";
+                dispatch(danmakuSlice.actions.setSearchTarget(DanmakuSearchTargets.content.value));
+                dispatch(danmakuSlice.actions.setInputKeywords({value: regexString}));
+                dispatch(danmakuSlice.actions.setSearchKeywords(regexString));
+            },
+            checkboxClick: ({target: {checked}}, id) => {
+                if (!(visibleList ?? []).length)
+                    return;
+
+                if (id == null)
+                    dispatch(danmakuSlice.actions[checked ? "select" : "unselect"]((visibleList ?? []).map(item => checked ? (selected[item.id] ? null : item.id) : item.id).filter(i => i != null)));
+                else
+                    dispatch(danmakuSlice.actions[checked ? "select" : "unselect"]([id]));
+            },
+            timestampClick: id => {
+                const item = (state.danmakuList ?? []).find(i => i.id === id);
+                dispatch(playerSlice.actions.seekTo(item.timestamp / 1000));
+            },
+        };
+
+        return (
+            <div className="danmaku">
+                <div className="toolbar">
+                    <select value={state.searchTarget} onChange={eventHandlers.searchTargetChange}>
+                        {Object.values(DanmakuSearchTargets).map(i => <option key={i.value} value={i.value}>{i.text}</option>)}
+                    </select>
+                    <input className="flex-1" value={state.inputKeywords.value} onInput={eventHandlers.keywordsInput}/>
+                    <button onClick={eventHandlers.filterToTranslateFuzzyClick}>过滤成同传[宽松]</button>
+                    <button onClick={eventHandlers.filterToTranslateStrictClick}>[严格]</button>
+                </div>
+                <div className="list">
+                    <div className="header">
+                        <div className="row">
+                            <label className="checkbox">
+                                <input
+                                    type="checkbox"
+                                    checked={visibleList && visibleList.length > 0 && visibleList.filter(i => selected[i.id]).length === visibleList.length}
+                                    onChange={e => eventHandlers.checkboxClick(e)}
+                                />
+                            </label>
+                            <div className="timestamp">时间</div>
+                            <div className="content">内容</div>
+                            <div className="user">用户</div>
+                        </div>
+                    </div>
+                    <div className="data">
+                        {
+                            (visibleList ?? []).map(item => (
+                                <div className="row" key={item.id}>
+                                    <label className="checkbox">
+                                        <input type="checkbox" checked={selected[item.id]} onChange={e => eventHandlers.checkboxClick(e, item.id)}/>
+                                    </label>
+                                    <div className="timestamp" onClick={() => eventHandlers.timestampClick(item.id)}>{item.timestamp}</div>
+                                    <div className="content" title={item.content}>{item.content}</div>
+                                    <div className="user" title={item.user}>{item.user}</div>
+                                </div>
+                            ))
+                        }
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    //endregion
+
+    //region controller
+    const controllerSlice = RTK.createSlice({
+        name: "controller",
+        initialState: {
+            tpc: "0.8",
+            templateContent: null,
+            templateSummary: null,
+            currentStyle: null,
+            resultASS: null,
+        },
+        reducers: {
+            setTPC(state, action) {
+                state.tpc = action.payload;
+            },
+            setTemplateContent(state, action) {
+                state.templateContent = action.payload;
+                state.templateSummary = null;
+                state.currentStyle = null;
+                state.resultASS = null;
+            },
+            setTemplateSummary(state, action) {
+                state.templateSummary = action.payload;
+            },
+            setCurrentStyle(state, action) {
+                state.currentStyle = action.payload;
+            },
+            setResultASS(state, action) {
+                state.resultASS = action.payload;
+            },
+        },
+    });
+
+    function Controller() {
+        const dispatch = useDispatch();
+
+        const state = useSelector(state => state.controller);
+        const playerState = useSelector(state => state.player);
+        const danmakuState = useSelector(state => state.danmaku);
+
+        useEffect(() => {
+            dispatch(controllerSlice.actions.setTemplateSummary(state.templateContent ? {
+                title: state.templateContent?.info?.Title,
+                styles: (state.templateContent?.styles?.style ?? []).map(i => i?.Name).filter(i => i),
+            } : null));
+        }, [state.templateContent]);
+        useEffect(() => {
+            dispatch(controllerSlice.actions.setCurrentStyle(state.templateSummary?.styles?.[0]));
+        }, [state.templateSummary]);
+        useEffect(() => {
+            if (!state.templateContent || !danmakuState.selected?.length)
+                return;
+            let selected = (danmakuState.selected ?? []).reduce((obj, i) => (obj[i] = true, obj), {});
+            selected = (danmakuState.danmakuList ?? []).map(i => selected[i.id] ? i : null).filter(i => i);
+
+            const dialogTemplate = state.templateContent?.events?.dialogue?.[0];
+            const offset = _.toFinite(playerState.offset);
+            const tpc = _.toFinite(state.tpc);
+
+            console.log("generating ass", {
+                offset,
+                tpc,
+                selected: selected?.length,
+                currentStyle: state.currentStyle,
+            });
+
+            dispatch(controllerSlice.actions.setResultASS(stringify({
+                ...state.templateContent,
+                events: {
+                    ...state.templateContent?.events,
+                    dialogue: selected.map(i => {
+                        const startTime = _.round(i.timestamp / 1000 + offset, 2);
+                        const content = i.content ?? "";
+                        const result = {
+                            ...dialogTemplate,
+                            Style: state.currentStyle,
+                            Text: {
+                                raw: content,
+                                combined: content,
+                                parsed: [
+                                    {
+                                        tags: [],
+                                        text: content,
+                                        drawing: [],
+                                    },
+                                ],
+                            },
+                            Start: startTime,
+                            End: startTime + Math.min((content.length * tpc), 2),
+                        };
+
+                        return result;
+                    }),
+                },
+            })));
+        }, [state.templateContent, state.currentStyle, state.tpc, playerState.offset, danmakuState.selected])
+
+        const eventHandlers = {
+            selectMediaButtonChange: file => {
+                dispatch(playerSlice.actions.setSrcObject({
+                    src: URL.createObjectURL(file),
+                    type: file.type
+                }));
+            },
+            selectDanmakuButtonChange: async file => {
+                const content = await readFileAsText(file);
+                const parsed = danmakuParser(content, file);
+                if (parsed)
+                    dispatch(danmakuSlice.actions.setDanmaku(parsed));
+                else
+                    toast({message: "该文件不支持", options: {toastClass: "yellow large right"}});
+            },
+            selectAssTemplateChange: async file => {
+                dispatch(controllerSlice.actions.setTemplateContent(parse(await readFileAsText(file))));
+            },
+            offsetInput: ({target: {value}}) => {
+                dispatch(playerSlice.actions.setOffset(value));
+            },
+            tpcInput: ({target: {value}}) => {
+                dispatch(controllerSlice.actions.setTPC(value));
+            },
+            assStyleSelectClick: value => dispatch(controllerSlice.actions.setCurrentStyle(value)),
+            exportClick: () => {
+                if (!state.resultASS) {
+                    toast({message: "请先加载弹幕和ASS模板并选择一条弹幕再尝试导出", options: {toastClass: "yellow large right"}})
+                    return;
+                }
+
+                saveAs(new Blob([state.resultASS], {type: "text/plain;charset=utf-8"}), "output.ass");
+            },
+        };
+
+        return (
+            <div className="controller">
+                <div className="buttons">
+                    <div className="left">
+                        <FilePicker
+                            maxSize={99999}
+                            extensions={["mp4"]}
+                            style={{display: "inline-block"}}
+                            onChange={file => eventHandlers.selectMediaButtonChange(file)}
+                            onError={error => toast({message: error, options: {toastClass: "yellow large right"}})}
+                        >
+                            <button>选择视频</button>
+                        </FilePicker>
+                        <FilePicker
+                            maxSize={99999}
+                            extensions={["json", "xml"]}
+                            style={{display: "inline-block"}}
+                            onChange={file => eventHandlers.selectDanmakuButtonChange(file)}
+                            onError={error => toast({message: error, options: {toastClass: "yellow large right"}})}
+                        >
+                            <button>选择弹幕</button>
+                        </FilePicker>
+                        <FilePicker
+                            maxSize={99999}
+                            extensions={["ass"]}
+                            style={{display: "inline-block"}}
+                            onChange={file => eventHandlers.selectAssTemplateChange(file)}
+                            onError={error => toast({message: error, options: {toastClass: "yellow large right"}})}
+                        >
+                            <button>选择ASS模板</button>
+                        </FilePicker>
+                        <label>
+                            弹幕偏移秒数：
+                            <input type="number" value={playerState.offset} onInput={eventHandlers.offsetInput}/>
+                        </label>
+                        <label>
+                            字符时长：
+                            <input type="number" value={state.tpc} onInput={eventHandlers.tpcInput}/>
+                        </label>
+                    </div>
+                    <button onClick={eventHandlers.exportClick}>导出</button>
+                </div>
+                <div className="info">
+                    <div>
+                        <div>视频信息：</div>
+                        <div className="indent">
+                            {playerState?.videoInfo ?
+                                <>
+                                    <div>尺寸：{playerState?.videoInfo?.width}x{playerState?.videoInfo?.height}</div>
+                                    <div>时长：{moment.unix(playerState?.videoInfo?.duration).utc().format("HH:mm:ss.SSS")}</div>
+                                </> :
+                                <div>无</div>
+                            }
+                        </div>
+                    </div>
+                    <div>
+                        <div>弹幕信息：</div>
+                        <div className="indent">
+                            {
+                                danmakuState?.danmakuSummary ?
+                                    <>
+                                        <div>条数：{danmakuState?.danmakuSummary?.total}</div>
+                                        <div>已选中：{danmakuState?.danmakuSummary?.selected}</div>
+                                        <div>直播信息：</div>
+                                        <div className="indent">
+                                            {
+                                                danmakuState.danmakuSummary.liveInfo ?
+                                                    <>
+                                                        <div>标题：{danmakuState.danmakuSummary.liveInfo.title}</div>
+                                                        <div>up主：{danmakuState.danmakuSummary.liveInfo.channel}</div>
+                                                    </> :
+                                                    <div>未知</div>
+                                            }
+                                        </div>
+                                    </> :
+                                    <div>无</div>
+                            }
+                        </div>
+                    </div>
+                    <div>
+                        <div>ASS模板信息：</div>
+                        <div className="indent">
+                            {
+                                state?.templateSummary ?
+                                    <>
+                                        <div>标题：{state?.templateSummary?.title ?? "无"}</div>
+                                        <div>样式信息：</div>
+                                        <div className="indent">
+                                            {
+                                                state?.templateSummary?.styles?.map((item, index) =>
+                                                    <div key={index}>
+                                                        <span>{item}</span>
+                                                        {
+                                                            state.currentStyle === item ?
+                                                                <button className="indent selected">[已选中]</button> :
+                                                                <button className="indent" onClick={() => eventHandlers.assStyleSelectClick(item)}>选择</button>
+                                                        }
+                                                    </div>
+                                                )
+                                            }
+                                        </div>
+                                    </> :
+                                    <div>无</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    //endregion
+
+    //region initialize
+    function Application() {
+        return (
+            <>
+                <div className="flex-1 flex flex-direction-column">
+                    <Player/>
+                    <Controller/>
+                </div>
+                <Danmaku/>
+            </>
+        )
+    }
+
+    ReactDOM.render(
+        (
+            <ReactRedux.Provider store={RTK.configureStore({
+                reducer: RTK.combineReducers(_.mapValues(_.keyBy([
+                    playerSlice,
+                    danmakuSlice,
+                    controllerSlice,
+                ], "name"), "reducer")),
+            })}>
+                <Application/>
+            </ReactRedux.Provider>
+        ),
+        document.querySelector("#application")
+    );
+    document.title = `${APPLICATION_NAME} ${VERSION ? "v" : ""}${VERSION}`;
+    //endregion
+</script>
+</body>
+</html>
