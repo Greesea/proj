@@ -2,3 +2,4 @@
 - ## [\[web\]](./web) 可以通过 github pages 访问的项目
     - [synchronizeViaP2P](https://greesea.github.io/proj/web/synchronizeViaP2P.html) 基于 P2P 的视频同步播放
     - [danmaku2ass](https://greesea.github.io/proj/web/danmaku2ass/) 弹幕转ASS
+    - [assManipulator](https://greesea.github.io/proj/web/assManipulator.html) ASS编辑
