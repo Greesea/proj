@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>danmaku2ass</title>
+
+    <style type="text/less">
+      @green: #38b03f;
+      @yellow: #f1a325;
+      @red: #ea644a;
+      @blue: #03b8cf;
+      @purple: #8666b8;
+      @gray: #808080;
+      @gray-light: #999999;
+      @gray-line: #333;
+
+      //region normalize
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      //endregion
+
+      //region toolkits
+      .width-100p {
+        width: 100%;
+      }
+
+      .height-100p {
+        height: 100%;
+      }
+
+      .flex {
+        display: flex;
+      }
+
+      .flex-direction-column {
+        flex-direction: column;
+      }
+
+      .flex-1 {
+        flex: 1;
+      }
+
+      .overflow-hidden {
+        overflow: hidden;
+      }
+
+      .overflow-auto {
+        overflow: auto;
+      }
+
+      .overflow-x-auto {
+        overflow-x: auto;
+      }
+
+      .overflow-y-auto {
+        overflow-y: auto;
+      }
+
+      .overflow-ios-smooth {
+        -webkit-overflow-scrolling: touch;
+      }
+
+      //endregion
+
+      #application {
+        display: flex;
+        height: 100%;
+        overflow: hidden;
+
+        .player {
+          flex: 1;
+
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background: black;
+          overflow: hidden;
+          border: 1px solid @gray-line;
+        }
+
+        .danmaku {
+          width: 30vw;
+
+          display: flex;
+          flex-direction: column;
+
+          margin-top: 8px;
+          margin-left: 8px;
+          margin-right: 8px;
+
+          .toolbar {
+            display: flex;
+          }
+
+          .list {
+            flex: 1;
+
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+
+            margin-top: 8px;
+            margin-bottom: 8px;
+
+            .header {
+              border-bottom: 1px solid @gray-line;
+              padding-bottom: 4px;
+              margin-bottom: 4px;
+              margin-right: 17px; // scrollbar
+            }
+
+            .row {
+              display: flex;
+              overflow: hidden;
+              font-size: 12px;
+
+              .checkbox {
+                width: 32px;
+              }
+
+              .timestamp {
+                width: 80px;
+              }
+
+              .content {
+                flex: 1;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+
+              .user {
+                width: 120px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+            }
+
+            .data {
+              flex: 1;
+              overflow: auto;
+
+              .timestamp {
+                cursor: pointer;
+                color: @blue;
+                text-decoration: underline;
+              }
+            }
+          }
+        }
+
+        .controller {
+          display: flex;
+          flex-direction: column;
+          height: 20vh;
+          overflow: hidden;
+
+          margin-top: 8px;
+          margin-left: 8px;
+
+          .buttons {
+            display: flex;
+
+            .left {
+              flex: 1;
+
+              > * {
+                margin-right: 8px;
+              }
+            }
+          }
+
+          .info {
+            flex: 1;
+
+            display: flex;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+
+            margin-top: 8px;
+
+            > div {
+              flex: 1;
+            }
+
+            .indent {
+              margin-left: 2em;
+            }
+
+            button.selected {
+              color: @green;
+            }
+          }
+        }
+      }
+
+      .toast {
+        > .right {
+          left: unset;
+          right: 0;
+          align-self: flex-end;
+          margin-right: 8px;
+        }
+
+        > .small {
+          min-width: unset;
+          width: 160px;
+        }
+
+        > .medium {
+          min-width: unset;
+          width: 300px;
+        }
+
+        > .large {
+          min-width: unset;
+          width: 460px;
+        }
+
+        > .green {
+          background: @green;
+        }
+
+        > .yellow {
+          background: @yellow;
+        }
+
+        > .red {
+          background: @red;
+        }
+
+        > .blue {
+          background: @blue;
+        }
+
+        > .gray {
+          background: @gray;
+        }
+      }
+    </style>
+</head>
+<body>
+
+<div id="application"></div>
+
+<script crossorigin src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.16.4/babel.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/less@4.1.2/dist/less.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react@17.0.2/umd/react.development.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@17.0.2/umd/react-dom.development.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/@reduxjs/toolkit@1.6.2/dist/redux-toolkit.umd.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react-redux@7.2.6/dist/react-redux.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/toast-me@1.4.8/lib/toast-me.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/moment@2.29.1/locale/zh-cn.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/ass-compiler@0.1.8/dist/ass-compiler.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<!--region react-file-picker-->
+<script>
+    window.react = React;
+</script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react-file-picker@0.0.6/lib/index.js"></script>
+<!--endregion-->
+
+<script type="text/babel">
+    const {useState, useEffect, useContext, useCallback, useRef, useMemo, useImperativeHandle, createContext, forwardRef} = React;
+    const {useSelector, useDispatch} = ReactRedux;
+    const {FilePicker} = window["react-file-picker"];
+    const {parse, stringify} = assCompiler;
+
+    //region utils
+    const sequence = (function () {
+        return ++this.value;
+    }).bind({value: 0});
+    const isEmpty = value => value == null || value === "";
+    const toast = obj => window["toast-me"].default(obj.message, _.extend({}, toast.defaults, obj.options), obj.action);
+    toast.defaults = {containerClass: "toast", duration: 3000, type: "chain"};
+    const readFileAsText = file => new Promise(resolve => {
+        const reader = new FileReader();
+        reader.addEventListener("load", () => resolve(reader.result));
+        reader.readAsText(file);
+    });
+    //endregion
+    //region constants
+    const APPLICATION_NAME = "ass manipulator";
+    const VERSION = "1.0.0_dev";
+    //endregion
+
+    //region ass
+    const assManipulatorSlice = RTK.createSlice({
+        name: "assManipulator",
+        initialState: {
+            source: null,
+            timeRatio: 1,
+            timePrecisionType: "round",
+        },
+        reducers: {
+            setSource(state, action) {
+                state.source = action.payload;
+            },
+            setTimeRatio(state, action) {
+                state.timeRatio = action.payload;
+            },
+            setTimePrecisionType(state, action) {
+                state.timePrecisionType = action.payload;
+            },
+        },
+    });
+    const AssManipulatorTimePrecisionTypes = {
+        round: {
+            text: "四舍五入",
+            fn: _.round,
+        },
+        floor: {
+            text: "向下取整",
+            fn: _.floor,
+        },
+        ceil: {
+            text: "向上取整",
+            fn: _.ceil,
+        },
+    };
+
+    function AssManipulator() {
+        const dispatch = useDispatch();
+        const state = useSelector(state => state.assManipulator);
+
+        const eventHandlers = {
+            selectAssTemplateChange: async file => {
+                dispatch(assManipulatorSlice.actions.setSource(parse(await readFileAsText(file))));
+            },
+            timeRatioInput: ({target: {value}}) => {
+                dispatch(assManipulatorSlice.actions.setTimeRatio(value));
+            },
+            timePrecisionTypeSelect: ({target: {value}}) => {
+                dispatch(assManipulatorSlice.actions.setTimePrecisionType(value));
+            },
+            exportClick: () => {
+                if (!state.source) {
+                    toast({message: "请先加载ASS模板再尝试导出", options: {toastClass: "yellow large"}})
+                    return;
+                }
+                const timeRatio = _.toFinite(state.timeRatio);
+                if (timeRatio <= 0) {
+                    toast({message: "时间比例范围不正确（必须>0）", options: {toastClass: "yellow large"}})
+                    return;
+                }
+
+                const clone = _.cloneDeep(state.source);
+                const timePrecisionFn = AssManipulatorTimePrecisionTypes[state.timePrecisionType]?.fn ?? (i => i);
+                (clone?.events?.dialogue ?? []).forEach(i => {
+                    i.Start = timePrecisionFn(i.Start * timeRatio, 2);
+                    i.End = timePrecisionFn(i.End * timeRatio, 2);
+                });
+
+                saveAs(new Blob([stringify(clone)], {type: "text/plain;charset=utf-8"}), "output.ass");
+            },
+        };
+
+        return (
+            <div className="assManipulator">
+                <div>
+                    <FilePicker
+                        maxSize={99999}
+                        extensions={["ass"]}
+                        style={{display: "inline-block"}}
+                        onChange={file => eventHandlers.selectAssTemplateChange(file)}
+                        onError={error => toast({message: error, options: {toastClass: "yellow large right"}})}
+                    >
+                        <button>选择ASS模板</button>
+                    </FilePicker>
+                </div>
+                <div>
+                    <span>字幕文件：</span>
+                    <span>{state.source ? `已加载(${state.source?.events?.dialogue?.length}条字幕)` : "未加载"}</span>
+                </div>
+                <div>
+                    <span>时间缩放比例：</span>
+                    <input type="number" value={state.timeRatio} onInput={eventHandlers.timeRatioInput}/>
+                </div>
+                <div>
+                    <span>时间缩放方式：</span>
+                    <select value={state.timePrecisionType} onChange={eventHandlers.timePrecisionTypeSelect}>
+                        {Object.entries(AssManipulatorTimePrecisionTypes).map(([key, value]) => <option value={key} key={key}>{value.text}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <button onClick={eventHandlers.exportClick}>导出</button>
+                </div>
+            </div>
+        )
+    }
+
+    //endregion
+
+    //region initialize
+    function Application() {
+        return (
+            <>
+                <AssManipulator/>
+            </>
+        )
+    }
+
+    ReactDOM.render(
+        (
+            <ReactRedux.Provider store={RTK.configureStore({
+                reducer: RTK.combineReducers(_.mapValues(_.keyBy([
+                    assManipulatorSlice,
+                ], "name"), "reducer")),
+            })}>
+                <Application/>
+            </ReactRedux.Provider>
+        ),
+        document.querySelector("#application")
+    );
+    document.title = `${APPLICATION_NAME} ${VERSION ? "v" : ""}${VERSION}`;
+    //endregion
+</script>
+</body>
+</html>
