@@ -125,26 +125,37 @@
                             width: 32px;
                         }
 
+                        .timestamp, .content, .user, .type {
+                            box-sizing: border-box;
+                            white-space: pre;
+                            word-break: break-all;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            padding-left: 4px;
+                            padding-right: 4px;
+                        }
+
                         .timestamp {
                             width: 80px;
                         }
 
                         .content {
                             flex: 1;
-                            overflow: hidden;
-                            text-overflow: ellipsis;
                         }
 
                         .user {
                             width: 120px;
-                            overflow: hidden;
-                            text-overflow: ellipsis;
+                        }
+
+                        .type {
+                            width: 40px;
                         }
                     }
 
                     .data {
                         flex: 1;
-                        overflow: auto;
+                        overflow-x: hidden;
+                        overflow-y: scroll;
 
                         .timestamp {
                             cursor: pointer;
@@ -255,6 +266,8 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/video.js@7.17.0/dist/video-js.min.css">
 <script crossorigin src="https://cdn.jsdelivr.net/npm/video.js@7.17.0/dist/video.js"></script>
 <script crossorigin src="https://cdn.jsdelivr.net/npm/video.js@7.17.0/dist/lang/zh-CN.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/flv.js@1.6.2/dist/flv.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/videojs-flvjs@0.3.1/dist/videojs-flvjs.min.js"></script>
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react@17.0.2/umd/react.development.js"></script>
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@17.0.2/umd/react-dom.development.js"></script>
 <script crossorigin src="https://cdn.jsdelivr.net/npm/@reduxjs/toolkit@1.6.2/dist/redux-toolkit.umd.js"></script>
@@ -265,6 +278,7 @@
 <script crossorigin src="./libs/libass/subtitles-octopus.js"></script>
 <script crossorigin src="https://cdn.jsdelivr.net/npm/ass-compiler@0.1.8/dist/ass-compiler.min.js"></script>
 <script crossorigin src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/fast-xml-parser/4.5.1/fxparser.min.js"></script>
 <!--region react-file-picker-->
 <script>
     window.react = React;
@@ -277,6 +291,7 @@
     const {useSelector, useDispatch} = ReactRedux;
     const {FilePicker} = window["react-file-picker"];
     const {parse, stringify} = assCompiler;
+    const XMLParser = window["XMLParser"];
 
     //region utils
     const sequence = (function () {
@@ -290,10 +305,18 @@
         reader.addEventListener("load", () => resolve(reader.result));
         reader.readAsText(file);
     });
+    const getXMLItemMetadata = {
+        attr: (i, key) => i?.[":@"]?.[`@_${key}`],
+        text: i => i?.[0]?.["#text"],
+    };
+    const findXMLChildByName = (root, key, withMeta) => {
+        const matched = root?.find(i => i?.[key]);
+        return withMeta ? matched : matched?.[key];
+    };
     //endregion
     //region constants
     const APPLICATION_NAME = "danmaku2ass";
-    const VERSION = "1.0.0_dev";
+    const VERSION = "1.0.1";
     //endregion
 
     //region player
@@ -438,6 +461,16 @@
             responsive: true,
             fill: true,
             preload: true,
+            flvjs: {
+                // mediaDataSource: {
+                //     isLive: false,
+                //     cors: true,
+                //     withCredentials: false,
+                // },
+                config: {
+                    isLive: false,
+                },
+            },
         };
         useEffect(() => {
             playerRef.current?.currentTime(state.control.seek);
@@ -469,6 +502,12 @@
             json: "application/json",
             xml: "text/xml",
         };
+        const TYPES = {
+            danmaku: "弹幕",
+            gift: "礼物",
+            membership: "上舰",
+            superChat: "sc",
+        };
         const parserList = [
             {
                 name: "DANMAKUS",
@@ -484,30 +523,118 @@
                         return;
 
                     const startTime = obj.live.startDate;
+                    const TypeMapping = {
+                        0: TYPES.danmaku,
+                        1: TYPES.gift,
+                        2: TYPES.membership,
+                        3: TYPES.superChat,
+                    };
                     return {
                         info: {
                             title: obj.live.title,
                             channel: obj.channel.uName,
                         },
                         list: (obj.danmakus ?? []).map((item, index) => {
-                            if (item.type !== 0 || (item.message ?? "").startsWith("[")) // 0 === danmaku
+                            if (item.type === 0 && (item.message ?? "").startsWith("[")) // ignore stamp
                                 return;
                             return {
                                 id: index,
                                 user: item.uName,
                                 content: item.message,
                                 timestamp: item.sendDate - startTime,
+                                type: TypeMapping?.[item.type],
                             };
                         }).filter(i => i),
                     };
                 },
             },
-            // {
-            //     name: "BililiveRecorder",
-            //     tryParse(fileContent, type) {
-            //         // TODO not support yet
-            //     },
-            // },
+            {
+                name: "BiliLiveRecorder and Blrec",
+                tryParse(fileContent, file) {
+                    if (file.type !== MIME.xml)
+                        return;
+                    let obj;
+                    try {
+                        obj = new XMLParser({
+                            ignoreAttributes: false,
+                            preserveOrder: true,
+                            parseAttributeValue: false,
+                            parseTagValue: false
+                        }).parse(fileContent);
+                    } catch {
+                    }
+                    if (!obj?.length)
+                        return;
+
+                    const DanmakuAttrIndex = {
+                        time: 0,
+                        type: 1,
+                        size: 2,
+                        color: 3,
+                        timestamp: 4,
+                        pool: 5,
+                        uidCRC: 6,
+                        rowId: 7,
+                    };
+                    const iTag = findXMLChildByName(obj, "i");
+                    const biliLiveRecorderMetaTag = findXMLChildByName(iTag, "BililiveRecorderRecordInfo", true);
+                    const blrecMetaTag = findXMLChildByName(iTag, "metadata");
+                    let startTime = 0;
+                    const info = {
+                        title: "",
+                        channel: "",
+                    };
+
+                    if (biliLiveRecorderMetaTag) {
+                        info.title = getXMLItemMetadata.attr(biliLiveRecorderMetaTag, "title");
+                        info.channel = getXMLItemMetadata.attr(biliLiveRecorderMetaTag, "name");
+                        startTime = +new Date(getXMLItemMetadata.attr(biliLiveRecorderMetaTag, "start_time"));
+                    }
+                    if (blrecMetaTag) {
+                        info.title = getXMLItemMetadata.text(findXMLChildByName(blrecMetaTag, "room_title"));
+                        info.channel = getXMLItemMetadata.text(findXMLChildByName(blrecMetaTag, "user_name"));
+                        startTime = +new Date(getXMLItemMetadata.text(findXMLChildByName(blrecMetaTag, "record_start_time")));
+                    }
+
+                    return iTag.reduce((storage, item) => {
+                        if (item.d) {
+                            const user = getXMLItemMetadata.attr(item, "user");
+                            const content = getXMLItemMetadata.text(item.d);
+                            const timestamp = parseInt((getXMLItemMetadata.attr(item, "p") ?? "").split(",")[DanmakuAttrIndex.timestamp]) - startTime;
+
+                            if (!(content ?? "").startsWith("[")) // ignore stamp
+                                storage.list.push({
+                                    id: storage.list.length,
+                                    user,
+                                    content,
+                                    timestamp,
+                                    type: TYPES.danmaku,
+                                });
+                        }
+                        if (item.gift || item.guard)
+                            storage.list.push({
+                                id: storage.list.length,
+                                user: getXMLItemMetadata.attr(item, "user"),
+                                content: getXMLItemMetadata.attr(item, "giftname"),
+                                timestamp: parseInt(getXMLItemMetadata.attr(item, "ts")) * 1000,
+                                type: item.gift ? TYPES.gift : (item.guard ? TYPES.membership : ""),
+                            });
+                        if (item.sc)
+                            storage.list.push({
+                                id: storage.list.length,
+                                user: getXMLItemMetadata.attr(item, "user"),
+                                content: getXMLItemMetadata.text(item.sc),
+                                timestamp: parseInt(getXMLItemMetadata.attr(item, "ts")) * 1000,
+                                type: TYPES.superChat,
+                            });
+
+                        return storage;
+                    }, {
+                        info,
+                        list: [],
+                    });
+                },
+            },
         ];
 
         return (fileContent, file) => parserList.reduce((result, parser) => result ?? parser.tryParse(fileContent, file), null);
@@ -675,6 +802,7 @@
                             <div className="timestamp">时间</div>
                             <div className="content">内容</div>
                             <div className="user">用户</div>
+                            <div className="type">类型</div>
                         </div>
                     </div>
                     <div className="data">
@@ -687,6 +815,7 @@
                                     <div className="timestamp" onClick={() => eventHandlers.timestampClick(item.id)}>{item.timestamp}</div>
                                     <div className="content" title={item.content}>{item.content}</div>
                                     <div className="user" title={item.user}>{item.user}</div>
+                                    <div className="type" title={item.type}>{item.type}</div>
                                 </div>
                             ))
                         }
@@ -835,7 +964,7 @@
                     <div className="left">
                         <FilePicker
                             maxSize={99999}
-                            extensions={["mp4"]}
+                            extensions={["mp4", "flv"]}
                             style={{display: "inline-block"}}
                             onChange={file => eventHandlers.selectMediaButtonChange(file)}
                             onError={error => toast({message: error, options: {toastClass: "yellow large right"}})}
