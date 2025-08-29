@@ -3,3 +3,5 @@
     - [synchronizeViaP2P](https://greesea.github.io/proj/web/synchronizeViaP2P.html) 基于 P2P 的视频同步播放
     - [danmaku2ass](https://greesea.github.io/proj/web/danmaku2ass/) 弹幕转ASS
     - [assManipulator](https://greesea.github.io/proj/web/assManipulator.html) ASS编辑
+- ## [\[userscripts\]](./userscripts) 浏览器脚本，依赖Tampermonkey
+    - [FuckBilibiliLoginPrompt](https://github.com/Greesea/proj/raw/refs/heads/master/web/userscripts/FuckBilibiliLoginPrompt.user.js) 禁止Bilibili在视频播放页且未登录时频繁暂停并弹出登录框的行为
