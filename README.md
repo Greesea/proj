@@ -4,4 +4,4 @@
     - [danmaku2ass](https://greesea.github.io/proj/web/danmaku2ass/) 弹幕转ASS
     - [assManipulator](https://greesea.github.io/proj/web/assManipulator.html) ASS编辑
 - ## [\[userscripts\]](./userscripts) 浏览器脚本，依赖Tampermonkey
-    - [FuckBilibiliLoginPrompt](https://github.com/Greesea/proj/raw/refs/heads/master/web/userscripts/FuckBilibiliLoginPrompt.user.js) 禁止Bilibili在视频播放页且未登录时频繁暂停并弹出登录框的行为
+    - [FuckBilibiliLoginPrompt](https://github.com/Greesea/proj/raw/refs/heads/master/userscripts/FuckBilibiliLoginPrompt.user.js) 禁止Bilibili在视频播放页且未登录时频繁暂停并弹出登录框的行为
